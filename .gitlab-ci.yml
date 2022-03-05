@@ -3,7 +3,7 @@ stages:
 
 test:
     stage: test
-    image: registry.ci.goget.dev/stina/builder:amd64
+    image: rust
     script:
       - cargo test --verbose
     tags:
