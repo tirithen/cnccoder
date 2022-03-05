@@ -1,0 +1,10 @@
+stages:
+  - test
+
+test:
+    stage: test
+    image: registry.ci.goget.dev/stina/builder:amd64
+    script:
+      - cargo test --verbose
+    tags:
+      - amd64

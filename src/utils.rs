@@ -24,4 +24,10 @@ mod tests {
         let inverted = scale(0.25, 0.0, 1.0, 8.0, 4.0);
         assert!((inverted - 7.0).abs() < 0.1);
     }
+
+    #[test]
+    fn test_round_precision() {
+        let rounded = round_precision(1.235567774);
+        assert!(rounded == 1.2356);
+    }
 }

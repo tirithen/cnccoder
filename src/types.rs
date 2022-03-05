@@ -57,6 +57,20 @@ impl Vector2 {
         Self { x, y }
     }
 
+    pub fn min() -> Self {
+        Self {
+            x: f64::MIN,
+            y: f64::MIN,
+        }
+    }
+
+    pub fn max() -> Self {
+        Self {
+            x: f64::MAX,
+            y: f64::MAX,
+        }
+    }
+
     pub fn distance_to(&self, to: Self) -> f64 {
         ((self.x - to.x) * (self.x - to.x) + (self.y - to.y) * (self.y - to.y)).sqrt()
     }
@@ -129,6 +143,14 @@ impl Vector3 {
         Vector2::new(self.x, self.y)
     }
 
+    pub fn xz(&self) -> Vector2 {
+        Vector2::new(self.x, self.z)
+    }
+
+    pub fn yz(&self) -> Vector2 {
+        Vector2::new(self.y, self.z)
+    }
+
     pub fn add_x(&self, value: f64) -> Self {
         let mut vector = *self;
         vector.x += value;
@@ -143,7 +165,7 @@ impl Vector3 {
 
     pub fn add_z(&self, value: f64) -> Self {
         let mut vector = *self;
-       vector.z += value;
+        vector.z += value;
         vector
     }
 }
@@ -160,36 +182,6 @@ impl fmt::Display for Vector3 {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, Copy, Clone)]
-pub struct Bounds {
-    pub min: Vector3,
-    pub max: Vector3,
-}
-
-impl Bounds {
-    pub fn max() -> Self {
-        Self {
-            min: Vector3::max(),
-            max: Vector3::min(),
-        }
-    }
-
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
-        Self {
-            min: Vector3::new(0.0, 0.0, 0.0),
-            max: Vector3::new(x, y, z),
-        }
-    }
-
-    pub fn size(&self) -> Vector3 {
-        Vector3::new(
-            self.max.x - self.min.x,
-            self.max.y - self.min.y,
-            self.max.z - self.min.z,
-        )
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum Units {
@@ -197,12 +189,16 @@ pub enum Units {
     Imperial,
 }
 
-impl Units {
-    pub fn to_string_base_unit(&self) -> String {
-        match self {
-            Self::Metric => "mm".to_string(),
-            Self::Imperial => "inch".to_string(),
-        }
+impl fmt::Display for Units {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            formatter,
+            "{}",
+            match self {
+                Units::Metric => "mm",
+                Units::Imperial => "inches",
+            }
+        )
     }
 }
 
@@ -212,7 +208,7 @@ impl Default for Units {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum Direction {
     Clockwise,
@@ -222,5 +218,100 @@ pub enum Direction {
 impl Default for Direction {
     fn default() -> Self {
         Direction::Clockwise
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_vector3_min() {
+        let vector = Vector3::min();
+        assert!(vector.x == f64::MIN);
+        assert!(vector.y == f64::MIN);
+        assert!(vector.z == f64::MIN);
+    }
+
+    #[test]
+    fn test_vector3_max() {
+        let vector = Vector3::max();
+        assert!(vector.x == f64::MAX);
+        assert!(vector.y == f64::MAX);
+        assert!(vector.z == f64::MAX);
+    }
+
+    #[test]
+    fn test_vector3_xy_xz_yz() {
+        let vector = Vector3::new(1.0, 2.0, 3.0);
+        assert!(vector.xy() == Vector2::new(1.0, 2.0));
+        assert!(vector.xz() == Vector2::new(1.0, 3.0));
+        assert!(vector.yz() == Vector2::new(2.0, 3.0));
+    }
+
+    #[test]
+    fn test_vector3_add_xyz() {
+        let vector = Vector3::default();
+
+        let vector = vector.add_x(1.0);
+        assert!(vector.x == 1.0);
+        assert!(vector.y == 0.0);
+        assert!(vector.z == 0.0);
+
+        let vector = vector.add_y(-1.0);
+        assert!(vector.x == 1.0);
+        assert!(vector.y == -1.0);
+        assert!(vector.z == 0.0);
+
+        let vector = vector.add_z(3.0);
+        assert!(vector.x == 1.0);
+        assert!(vector.y == -1.0);
+        assert!(vector.z == 3.0);
+    }
+
+    #[test]
+    fn test_vector2_min() {
+        let vector = Vector2::min();
+        assert!(vector.x == f64::MIN);
+        assert!(vector.y == f64::MIN);
+    }
+
+    #[test]
+    fn test_vector2_max() {
+        let vector = Vector2::max();
+        assert!(vector.x == f64::MAX);
+        assert!(vector.y == f64::MAX);
+    }
+
+    #[test]
+    fn test_vector2_add_xyz() {
+        let vector = Vector2::default();
+
+        let vector = vector.add_x(1.0);
+        assert!(vector.x == 1.0);
+        assert!(vector.y == 0.0);
+
+        let vector = vector.add_y(-1.0);
+        assert!(vector.x == 1.0);
+        assert!(vector.y == -1.0);
+    }
+
+    #[test]
+    fn test_vector2_distance_to() {
+        let vector_a = Vector2::new(20.0, 40.0);
+        let vector_b = Vector2::new(20.0, 20.0);
+        assert!(vector_a.distance_to(vector_b) == 20.0);
+    }
+
+    #[test]
+    fn test_vector2_angle() {
+        let vector = Vector2::new(20.0, 0.0);
+        assert!(vector.angle() == f64::consts::PI / 2.0);
+    }
+
+    #[test]
+    fn test_vector2_angle_degree() {
+        let vector = Vector2::new(20.0, 20.0);
+        assert!(vector.angle_degrees() == 45.0);
     }
 }
