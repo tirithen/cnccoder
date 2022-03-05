@@ -122,7 +122,7 @@ impl Hash for Ballnose {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Conical {
-    length: f64,
+    pub length: f64,
     pub units: Units,
     pub angle: f64,
     pub diameter: f64,
