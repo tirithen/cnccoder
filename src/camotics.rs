@@ -1,8 +1,5 @@
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::prelude::*;
 
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::{tools::*, types::*};
@@ -147,16 +144,6 @@ impl Camotics {
 
     pub fn to_json_string(&self) -> String {
         serde_json::to_string_pretty(&self).unwrap()
-    }
-
-    pub fn persist_project(&self) -> Result<()> {
-        let mut file = File::create(format!("{}.camotics", self.name))?;
-        let json = self.to_json_string();
-        let bytes = json.as_bytes();
-
-        file.write_all(bytes)?;
-        file.sync_all()?;
-        Ok(())
     }
 }
 

@@ -215,6 +215,19 @@ pub enum Direction {
     Counterclockwise,
 }
 
+impl fmt::Display for Direction {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            formatter,
+            "{}",
+            match self {
+                Direction::Clockwise => "clockwise",
+                Direction::Counterclockwise => "counterclockwise",
+            }
+        )
+    }
+}
+
 impl Default for Direction {
     fn default() -> Self {
         Direction::Clockwise

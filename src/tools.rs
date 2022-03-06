@@ -16,19 +16,88 @@ pub enum Tool {
     Conical(Conical),
 }
 
+impl Tool {
+    pub fn cylindrical(
+        units: Units,
+        length: f64,
+        diameter: f64,
+        direction: Direction,
+        spindle_speed: f64,
+        feed_rate: f64,
+    ) -> Tool {
+        Tool::Cylindrical(Cylindrical::new(
+            units,
+            length,
+            diameter,
+            direction,
+            spindle_speed,
+            feed_rate,
+        ))
+    }
+
+    pub fn ballnose(
+        units: Units,
+        length: f64,
+        diameter: f64,
+        direction: Direction,
+        spindle_speed: f64,
+        feed_rate: f64,
+    ) -> Tool {
+        Tool::Ballnose(Ballnose::new(
+            units,
+            length,
+            diameter,
+            direction,
+            spindle_speed,
+            feed_rate,
+        ))
+    }
+
+    pub fn conical(
+        units: Units,
+        angle: f64,
+        diameter: f64,
+        direction: Direction,
+        spindle_speed: f64,
+        feed_rate: f64,
+    ) -> Tool {
+        Tool::Conical(Conical::new(
+            units,
+            angle,
+            diameter,
+            direction,
+            spindle_speed,
+            feed_rate,
+        ))
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Cylindrical {
     pub units: Units,
     pub length: f64,
     pub diameter: f64,
+    pub direction: Direction,
+    pub spindle_speed: f64,
+    pub feed_rate: f64,
 }
 
 impl Cylindrical {
-    pub fn new(units: Units, length: f64, diameter: f64) -> Cylindrical {
+    pub fn new(
+        units: Units,
+        length: f64,
+        diameter: f64,
+        direction: Direction,
+        spindle_speed: f64,
+        feed_rate: f64,
+    ) -> Cylindrical {
         Cylindrical {
             units,
             length,
             diameter,
+            direction,
+            spindle_speed,
+            feed_rate,
         }
     }
 
@@ -43,18 +112,27 @@ impl fmt::Display for Cylindrical {
 
         write!(
             formatter,
-            "Cylindrical tool: diameter = {}{}, length = {}{}",
+            "Cylindrical tool: diameter = {}{}, length = {}{}, direction = {}, spindle_speed = {}, feed_rate = {}{}/min",
             round_precision(self.diameter),
             units.clone(),
             round_precision(self.length),
-            units
+            units.clone(),
+            self.direction,
+            round_precision(self.spindle_speed),
+            round_precision(self.feed_rate),
+            units,
         )
     }
 }
 
 impl PartialEq for Cylindrical {
     fn eq(&self, other: &Cylindrical) -> bool {
-        self.units == other.units && self.length == other.length && self.diameter == other.diameter
+        self.units == other.units
+            && self.length == other.length
+            && self.diameter == other.diameter
+            && self.direction == other.direction
+            && self.spindle_speed == other.spindle_speed
+            && self.feed_rate == other.feed_rate
     }
 }
 
@@ -65,6 +143,9 @@ impl Hash for Cylindrical {
         self.units.hash(state);
         self.length.to_bits().hash(state);
         self.diameter.to_bits().hash(state);
+        self.direction.hash(state);
+        self.spindle_speed.to_bits().hash(state);
+        self.feed_rate.to_bits().hash(state);
     }
 }
 
@@ -73,14 +154,27 @@ pub struct Ballnose {
     pub units: Units,
     pub length: f64,
     pub diameter: f64,
+    pub direction: Direction,
+    pub spindle_speed: f64,
+    pub feed_rate: f64,
 }
 
 impl Ballnose {
-    pub fn new(units: Units, length: f64, diameter: f64) -> Ballnose {
+    pub fn new(
+        units: Units,
+        length: f64,
+        diameter: f64,
+        direction: Direction,
+        spindle_speed: f64,
+        feed_rate: f64,
+    ) -> Ballnose {
         Ballnose {
             units,
             length,
             diameter,
+            direction,
+            spindle_speed,
+            feed_rate,
         }
     }
 
@@ -95,18 +189,27 @@ impl fmt::Display for Ballnose {
 
         write!(
             formatter,
-            "Ballnose tool: diameter = {}{}, length = {}{}",
+            "Ballnose tool: diameter = {}{}, length = {}{}, direction = {}, spindle_speed = {}, feed_rate = {}{}/min",
             round_precision(self.diameter),
             units.clone(),
             round_precision(self.length),
-            units
+            units.clone(),
+            self.direction,
+            round_precision(self.spindle_speed),
+            round_precision(self.feed_rate),
+            units,
         )
     }
 }
 
 impl PartialEq for Ballnose {
     fn eq(&self, other: &Ballnose) -> bool {
-        self.units == other.units && self.length == other.length && self.diameter == other.diameter
+        self.units == other.units
+            && self.length == other.length
+            && self.diameter == other.diameter
+            && self.direction == other.direction
+            && self.spindle_speed == other.spindle_speed
+            && self.feed_rate == other.feed_rate
     }
 }
 
@@ -117,24 +220,40 @@ impl Hash for Ballnose {
         self.units.hash(state);
         self.length.to_bits().hash(state);
         self.diameter.to_bits().hash(state);
+        self.direction.hash(state);
+        self.spindle_speed.to_bits().hash(state);
+        self.feed_rate.to_bits().hash(state);
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Conical {
-    pub length: f64,
     pub units: Units,
+    pub length: f64,
     pub angle: f64,
     pub diameter: f64,
+    pub direction: Direction,
+    pub spindle_speed: f64,
+    pub feed_rate: f64,
 }
 
 impl Conical {
-    pub fn new(units: Units, angle: f64, diameter: f64) -> Conical {
+    pub fn new(
+        units: Units,
+        angle: f64,
+        diameter: f64,
+        direction: Direction,
+        spindle_speed: f64,
+        feed_rate: f64,
+    ) -> Conical {
         Conical {
-            length: (diameter / 2.0) / (angle / 2.0).to_radians().tan(),
             units,
+            length: (diameter / 2.0) / (angle / 2.0).to_radians().tan(),
             angle,
             diameter,
+            direction,
+            spindle_speed,
+            feed_rate,
         }
     }
 
@@ -149,12 +268,16 @@ impl fmt::Display for Conical {
 
         write!(
             formatter,
-            "Conical: angle = {}°, diameter = {}{}, length = {}{}",
+            "Conical: angle = {}°, diameter = {}{}, length = {}{}, direction = {}, spindle_speed = {}, feed_rate = {}{}/min",
             round_precision(self.angle),
             round_precision(self.diameter),
             units.clone(),
             round_precision(self.length),
-            units
+            units.clone(),
+            self.direction,
+            round_precision(self.spindle_speed),
+            round_precision(self.feed_rate),
+            units,
         )
     }
 }
@@ -165,6 +288,9 @@ impl PartialEq for Conical {
             && self.angle == other.angle
             && self.length == other.length
             && self.diameter == other.diameter
+            && self.direction == other.direction
+            && self.spindle_speed == other.spindle_speed
+            && self.feed_rate == other.feed_rate
     }
 }
 
@@ -176,5 +302,8 @@ impl Hash for Conical {
         self.angle.to_bits().hash(state);
         self.length.to_bits().hash(state);
         self.diameter.to_bits().hash(state);
+        self.direction.hash(state);
+        self.spindle_speed.to_bits().hash(state);
+        self.feed_rate.to_bits().hash(state);
     }
 }
