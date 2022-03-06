@@ -3,18 +3,13 @@ use std::collections::hash_map::Entry::Vacant;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use serde::{Deserialize, Serialize};
-use anyhow::Result;
-
 use crate::cuts::*;
 use crate::tools::*;
 use crate::types::*;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
-#[serde(tag = "kind", rename_all = "lowercase")]
+#[derive(Debug, Clone)]
 pub enum Operation {
     Cut(Cut),
-    // Tool(Tool),
 }
 
 pub struct Context {
@@ -152,13 +147,13 @@ mod tests {
             400.0,
         );
 
-        let cut = Cut::Line(Line::new(
-            Vector2::default(),
-            Vector2::new(5.0, 10.0),
-        ));
-
         program.extend(tool, |context| {
-            context.append_cut(cut);
+            context.append_cut(Cut::path(
+                Vector3::default(),
+                vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
+                -0.1,
+                1.0
+            ));
         });
     }
 }
