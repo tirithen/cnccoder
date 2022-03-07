@@ -183,6 +183,13 @@ impl Program {
 
         instructions
     }
+
+    pub fn to_gcode(&self) -> String {
+        self.to_instructions().iter()
+            .map(|instruction| instruction.to_gcode())
+            .collect::<Vec<String>>()
+            .join("\n")
+    }
 }
 
 #[cfg(test)]
@@ -192,8 +199,8 @@ mod tests {
     #[test]
     fn test_new_program() {
         let program = Program::new(Units::Metric, 10.0, 50.0);
-        assert!(program.z_safe == 10.0);
-        assert!(program.z_tool_change == 50.0);
+        assert_eq!(program.z_safe, 10.0);
+        assert_eq!(program.z_tool_change, 50.0);
     }
 
     fn vec_compare<T>(va: &[T], vb: &[T]) -> bool
@@ -239,5 +246,48 @@ mod tests {
         ];
 
         assert!(vec_compare(&instructions, &expected_output));
+    }
+
+    #[test]
+    fn test_program_to_gcode() {
+        let mut program = Program::new(Units::Metric, 10.0, 50.0);
+
+        let tool = Tool::cylindrical(
+            Units::Metric,
+            50.0,
+            4.0,
+            Direction::Clockwise,
+            5000.0,
+            400.0,
+        );
+
+        program.extend(tool, |context| {
+            context.append_cut(Cut::path(
+                Vector3::new(0.0, 0.0, 3.0),
+                vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
+                -0.1,
+                1.0
+            ));
+        });
+
+        let gcode = program.to_gcode();
+
+        let expected_output = vec![
+            ";(Cut path at: x = 0, y = 0)".to_string(),
+            "G0 Z10".to_string(),
+            "G0 X0 Y0".to_string(),
+            "G1 Z3 F400".to_string(),
+            "G1 X0 Y0 Z3".to_string(),
+            "G1 X5 Y10 Z2".to_string(),
+            "G1 X0 Y0 Z2".to_string(),
+            "G1 X5 Y10 Z1".to_string(),
+            "G1 X0 Y0 Z1".to_string(),
+            "G1 X5 Y10 Z0".to_string(),
+            "G1 X0 Y0 Z-0.1".to_string(),
+            "G1 X5 Y10 Z-0.1".to_string(),
+            "G0 Z10".to_string(),
+        ].join("\n");
+
+        assert_eq!(gcode, expected_output);
     }
 }

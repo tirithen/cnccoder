@@ -6,23 +6,6 @@ pub fn round_precision(value: f64) -> f64 {
     ((value * 10000.0) as f64).round() / 10000.0
 }
 
-
-pub fn trim_repeated_lines(code: String) -> String {
-    let mut output = String::new();
-    let mut last_row = "";
-
-    for row in code.lines() {
-        if row != last_row || row.is_empty() {
-            output.push_str(row);
-            output.push('\n');
-        }
-
-        last_row = row;
-    }
-
-    output
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -46,32 +29,5 @@ mod tests {
     fn test_round_precision() {
         let rounded = round_precision(1.235567774);
         assert!(rounded == 1.2356);
-    }
-
-    #[test]
-    fn test_trim_repeated_lines() {
-        let input = "
-            first
-            second
-            repeat
-            repeat
-            repeat
-            repeat
-            third
-            repeat
-            repeat
-        ";
-
-        let expected_output = "
-            first
-            second
-            repeat
-            third
-            repeat
-        ";
-
-        let output = trim_repeated_lines(input.to_string());
-
-        assert!(output == expected_output);
     }
 }
