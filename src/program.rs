@@ -120,7 +120,7 @@ impl Program {
 
             // Set tool ordering
             let mut tool_ordering = self.tool_ordering.lock().unwrap();
-            let mut max_ordering = 0;
+            let mut max_ordering = -1;
             for ordering in tool_ordering.values() {
                 if *ordering > max_ordering {
                     max_ordering = *ordering;
@@ -146,7 +146,7 @@ impl Program {
 
         let tool_ordering = self.tool_ordering.lock().unwrap();
         let mut orderings: Vec<_> = tool_ordering.iter().collect();
-        orderings.sort_by(|a, b| b.1.cmp(a.1));
+        orderings.sort_by(|a, b| a.1.cmp(b.1));
 
         for (tool, _) in orderings {
             tools.push(*tool);
@@ -203,19 +203,11 @@ mod tests {
         assert_eq!(program.z_tool_change, 50.0);
     }
 
-    fn vec_compare<T>(va: &[T], vb: &[T]) -> bool
-        where T: PartialEq {
-        (va.len() == vb.len()) &&
-         va.iter()
-           .zip(vb)
-           .all(|(a,b)| *a == *b)
-    }
-
     #[test]
-    fn test_program_to_instructions() {
+    fn test_program_tools() {
         let mut program = Program::new(Units::Metric, 10.0, 50.0);
 
-        let tool = Tool::cylindrical(
+        let tool1 = Tool::cylindrical(
             Units::Metric,
             50.0,
             4.0,
@@ -224,10 +216,77 @@ mod tests {
             400.0,
         );
 
-        program.extend(tool, |context| {
+        let tool2 = Tool::conical(
+            Units::Metric,
+            45.0,
+            15.0,
+            Direction::Clockwise,
+            5000.0,
+            400.0,
+        );
+
+        program.extend(tool1, |context| {
             context.append_cut(Cut::path(
-                Vector3::default(),
+                Vector3::new(0.0, 0.0, 3.0),
                 vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
+                -0.1,
+                1.0
+            ));
+        });
+
+        program.extend(tool2, |context| {
+            context.append_cut(Cut::path(
+                Vector3::new(5.0, 10.0, 3.0),
+                vec![Segment::line(Vector2::new(5.0, 10.0), Vector2::new(15.0, 10.0))],
+                -0.1,
+                1.0
+            ));
+        });
+
+        let tools = program.tools();
+        assert_eq!(tools, vec![tool1, tool2]);
+
+        program.set_tool_ordering(tool2, 0);
+
+        let tools = program.tools();
+        assert_eq!(tools, vec![tool2, tool1]);
+    }
+
+    #[test]
+    fn test_program_to_instructions() {
+        let mut program = Program::new(Units::Metric, 10.0, 50.0);
+
+        let tool1 = Tool::cylindrical(
+            Units::Metric,
+            50.0,
+            4.0,
+            Direction::Clockwise,
+            5000.0,
+            400.0,
+        );
+
+        let tool2 = Tool::conical(
+            Units::Metric,
+            45.0,
+            15.0,
+            Direction::Clockwise,
+            5000.0,
+            400.0,
+        );
+
+        program.extend(tool1, |context| {
+            context.append_cut(Cut::path(
+                Vector3::new(0.0, 0.0, 3.0),
+                vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
+                -0.1,
+                1.0
+            ));
+        });
+
+        program.extend(tool2, |context| {
+            context.append_cut(Cut::path(
+                Vector3::new(5.0, 10.0, 3.0),
+                vec![Segment::line(Vector2::new(5.0, 10.0), Vector2::new(15.0, 10.0))],
                 -0.1,
                 1.0
             ));
@@ -239,20 +298,76 @@ mod tests {
             Instruction::Comment(Comment { text: "Cut path at: x = 0, y = 0".to_string() }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::G0(G0 { x: Some(0.0), y: Some(0.0), z: None }),
-            Instruction::G1(G1 { x: None, y: None, z: Some(0.0), f: Some(400.0) }),
+            Instruction::G1(G1 { x: None, y: None, z: Some(3.0), f: Some(400.0) }),
+            Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(3.0), f: None }),
+            Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(2.0), f: None }),
+            Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(2.0), f: None }),
+            Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(1.0), f: None }),
+            Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(1.0), f: None }),
+            Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(0.0), f: None }),
             Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(-0.1), f: None }),
             Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(-0.1), f: None }),
-            Instruction::G0(G0 { x: None, y: None, z: Some(10.0) })
+            Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
+            Instruction::Empty(Empty {}),
+            Instruction::Comment(Comment { text: "Cut path at: x = 5, y = 10".to_string() }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
+            Instruction::G0(G0 { x: Some(10.0), y: Some(20.0), z: None }),
+            Instruction::G1(G1 { x: None, y: None, z: Some(3.0), f: Some(400.0) }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(20.0), z: Some(3.0), f: None }),
+            Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(2.0), f: None }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(20.0), z: Some(2.0), f: None }),
+            Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(1.0), f: None }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(20.0), z: Some(1.0), f: None }),
+            Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(0.0), f: None }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(20.0), z: Some(-0.1), f: None }),
+            Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(-0.1), f: None }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
         ];
 
-        assert!(vec_compare(&instructions, &expected_output));
+        assert_eq!(instructions, expected_output);
+
+        program.set_tool_ordering(tool2, 0);
+
+        let instructions = program.to_instructions();
+
+        let expected_output = vec![
+            Instruction::Comment(Comment { text: "Cut path at: x = 5, y = 10".to_string() }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
+            Instruction::G0(G0 { x: Some(10.0), y: Some(20.0), z: None }),
+            Instruction::G1(G1 { x: None, y: None, z: Some(3.0), f: Some(400.0) }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(20.0), z: Some(3.0), f: None }),
+            Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(2.0), f: None }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(20.0), z: Some(2.0), f: None }),
+            Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(1.0), f: None }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(20.0), z: Some(1.0), f: None }),
+            Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(0.0), f: None }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(20.0), z: Some(-0.1), f: None }),
+            Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(-0.1), f: None }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
+            Instruction::Empty(Empty {}),
+            Instruction::Comment(Comment { text: "Cut path at: x = 0, y = 0".to_string() }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
+            Instruction::G0(G0 { x: Some(0.0), y: Some(0.0), z: None }),
+            Instruction::G1(G1 { x: None, y: None, z: Some(3.0), f: Some(400.0) }),
+            Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(3.0), f: None }),
+            Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(2.0), f: None }),
+            Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(2.0), f: None }),
+            Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(1.0), f: None }),
+            Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(1.0), f: None }),
+            Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(0.0), f: None }),
+            Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(-0.1), f: None }),
+            Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(-0.1), f: None }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
+        ];
+
+        assert_eq!(instructions, expected_output);
     }
 
     #[test]
     fn test_program_to_gcode() {
         let mut program = Program::new(Units::Metric, 10.0, 50.0);
 
-        let tool = Tool::cylindrical(
+        let tool1 = Tool::cylindrical(
             Units::Metric,
             50.0,
             4.0,
@@ -261,7 +376,16 @@ mod tests {
             400.0,
         );
 
-        program.extend(tool, |context| {
+        let tool2 = Tool::conical(
+            Units::Metric,
+            45.0,
+            15.0,
+            Direction::Clockwise,
+            5000.0,
+            400.0,
+        );
+
+        program.extend(tool1, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(0.0, 0.0, 3.0),
                 vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
@@ -270,9 +394,34 @@ mod tests {
             ));
         });
 
+        program.extend(tool2, |context| {
+            context.append_cut(Cut::path(
+                Vector3::new(5.0, 10.0, 3.0),
+                vec![Segment::line(Vector2::new(5.0, 10.0), Vector2::new(15.0, 10.0))],
+                -0.1,
+                1.0
+            ));
+        });
+
+        program.set_tool_ordering(tool2, 0);
+
         let gcode = program.to_gcode();
 
         let expected_output = vec![
+            ";(Cut path at: x = 5, y = 10)".to_string(),
+            "G0 Z10".to_string(),
+            "G0 X10 Y20".to_string(),
+            "G1 Z3 F400".to_string(),
+            "G1 X10 Y20 Z3".to_string(),
+            "G1 X20 Y20 Z2".to_string(),
+            "G1 X10 Y20 Z2".to_string(),
+            "G1 X20 Y20 Z1".to_string(),
+            "G1 X10 Y20 Z1".to_string(),
+            "G1 X20 Y20 Z0".to_string(),
+            "G1 X10 Y20 Z-0.1".to_string(),
+            "G1 X20 Y20 Z-0.1".to_string(),
+            "G0 Z10".to_string(),
+            "".to_string(),
             ";(Cut path at: x = 0, y = 0)".to_string(),
             "G0 Z10".to_string(),
             "G0 X0 Y0".to_string(),
