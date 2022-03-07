@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::cuts::*;
+use crate::instructions::*;
 use crate::tools::*;
 use crate::types::*;
 
@@ -12,6 +13,16 @@ pub enum Operation {
     Cut(Cut),
 }
 
+impl Operation {
+    pub fn to_instructions(&self, context: Context) -> Vec<Instruction> {
+        match self {
+            Self::Cut(cut) => cut.to_instructions(context),
+        }
+    }
+}
+
+
+#[derive(Debug, Clone)]
 pub struct Context {
     units: Units,
     tool: Tool,
@@ -38,11 +49,33 @@ impl Context {
     pub fn append_cut(&mut self, cut: Cut) {
         self.append(Operation::Cut(cut));
     }
+
+    pub fn tool(&self) -> Tool {
+        self.tool
+    }
+
+    pub fn z_safe(&self) -> f64 {
+        self.z_safe
+    }
+
+    pub fn z_tool_change(&self) -> f64 {
+        self.z_tool_change
+    }
+
+    pub fn to_instructions(&self) -> Vec<Instruction> {
+        let mut instructions = vec![];
+
+        for operation in &self.operations {
+            instructions.append(&mut operation.to_instructions((*self).clone()));
+        }
+
+        instructions
+    }
 }
 
 pub struct Program {
-    pub z_safe: f64,
-    pub z_tool_change: f64,
+    z_safe: f64,
+    z_tool_change: f64,
     units: Units,
     contexts: Arc<Mutex<HashMap<Tool, Arc<Mutex<Context>>>>>,
     tool_ordering: Arc<Mutex<HashMap<Tool, i32>>>,
@@ -121,6 +154,35 @@ impl Program {
 
         tools
     }
+
+    pub fn to_instructions(&self) -> Vec<Instruction> {
+        let contexts = self.contexts.lock().unwrap();
+        let tools = self.tools();
+
+        let mut raw_instructions = vec![];
+        for tool in tools {
+            if let Some(context) = contexts.get(&tool) {
+                let locked_context = &mut context.lock().unwrap();
+                raw_instructions.append(&mut locked_context.to_instructions());
+            }
+        }
+
+        let raw_length = raw_instructions.len();
+        let mut instructions = vec![];
+        for (index, instruction) in (&raw_instructions).iter().enumerate() {
+            if (index == 0 || index == raw_length - 1) && *instruction == Instruction::Empty(Empty {}) {
+                continue;
+            }
+
+            if index < raw_length - 1 && instruction == &raw_instructions[index + 1] {
+                continue;
+            }
+
+            instructions.push(instruction.clone());
+        }
+
+        instructions
+    }
 }
 
 #[cfg(test)]
@@ -134,8 +196,16 @@ mod tests {
         assert!(program.z_tool_change == 50.0);
     }
 
+    fn vec_compare<T>(va: &[T], vb: &[T]) -> bool
+        where T: PartialEq {
+        (va.len() == vb.len()) &&
+         va.iter()
+           .zip(vb)
+           .all(|(a,b)| *a == *b)
+    }
+
     #[test]
-    fn test_program_extend() {
+    fn test_program_to_instructions() {
         let mut program = Program::new(Units::Metric, 10.0, 50.0);
 
         let tool = Tool::cylindrical(
@@ -155,5 +225,19 @@ mod tests {
                 1.0
             ));
         });
+
+        let instructions = program.to_instructions();
+
+        let expected_output = vec![
+            Instruction::Comment(Comment { text: "Cut path at: x = 0, y = 0".to_string() }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
+            Instruction::G0(G0 { x: Some(0.0), y: Some(0.0), z: None }),
+            Instruction::G1(G1 { x: None, y: None, z: Some(0.0), f: Some(400.0) }),
+            Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(-0.1), f: None }),
+            Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(-0.1), f: None }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(10.0) })
+        ];
+
+        assert!(vec_compare(&instructions, &expected_output));
     }
 }

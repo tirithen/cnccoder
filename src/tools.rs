@@ -70,6 +70,38 @@ impl Tool {
             feed_rate,
         ))
     }
+
+    pub fn diameter(&self) -> f64 {
+        match self {
+            Self::Cylindrical(t) => t.diameter,
+            Self::Ballnose(t) => t.diameter,
+            Self::Conical(t) => t.diameter,
+        }
+    }
+
+    pub fn direction(&self) -> Direction {
+        match self {
+            Self::Cylindrical(t) => t.direction,
+            Self::Ballnose(t) => t.direction,
+            Self::Conical(t) => t.direction,
+        }
+    }
+
+    pub fn spindle_speed(&self) -> f64 {
+        match self {
+            Self::Cylindrical(t) => t.spindle_speed,
+            Self::Ballnose(t) => t.spindle_speed,
+            Self::Conical(t) => t.spindle_speed,
+        }
+    }
+
+    pub fn feed_rate(&self) -> f64 {
+        match self {
+            Self::Cylindrical(t) => t.feed_rate,
+            Self::Ballnose(t) => t.feed_rate,
+            Self::Conical(t) => t.feed_rate,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
