@@ -79,6 +79,14 @@ impl Tool {
         }
     }
 
+    pub fn radius(&self) -> f64 {
+        match self {
+            Self::Cylindrical(t) => t.diameter / 2.0,
+            Self::Ballnose(t) => t.diameter / 2.0,
+            Self::Conical(t) => t.diameter / 2.0,
+        }
+    }
+
     pub fn direction(&self) -> Direction {
         match self {
             Self::Cylindrical(t) => t.direction,
@@ -101,6 +109,19 @@ impl Tool {
             Self::Ballnose(t) => t.feed_rate,
             Self::Conical(t) => t.feed_rate,
         }
+    }
+}
+
+
+impl fmt::Display for Tool {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let description = match self {
+            Self::Cylindrical(t) => t.to_string(),
+            Self::Ballnose(t) => t.to_string(),
+            Self::Conical(t) => t.to_string(),
+        };
+
+        write!(formatter, "{}", description)
     }
 }
 

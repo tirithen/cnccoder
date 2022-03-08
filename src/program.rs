@@ -78,7 +78,7 @@ pub struct Program {
     z_tool_change: f64,
     units: Units,
     contexts: Arc<Mutex<HashMap<Tool, Arc<Mutex<Context>>>>>,
-    tool_ordering: Arc<Mutex<HashMap<Tool, i32>>>,
+    tool_ordering: Arc<Mutex<HashMap<Tool, u32>>>,
 }
 
 impl Program {
@@ -92,7 +92,7 @@ impl Program {
         }
     }
 
-    pub fn tool_ordering(&self, tool: Tool) -> Option<i32> {
+    pub fn tool_ordering(&self, tool: Tool) -> Option<u32> {
         if let Some(ordering) = self.tool_ordering.lock().unwrap().get(&tool) {
             return Some(*ordering);
         }
@@ -100,7 +100,7 @@ impl Program {
         None
     }
 
-    pub fn set_tool_ordering(&self, tool: Tool, ordering: i32) {
+    pub fn set_tool_ordering(&self, tool: Tool, ordering: u32) {
         let mut tool_ordering = self.tool_ordering.lock().unwrap();
 
         for (it_tool, it_ordering) in tool_ordering.iter_mut() {
@@ -120,7 +120,7 @@ impl Program {
 
             // Set tool ordering
             let mut tool_ordering = self.tool_ordering.lock().unwrap();
-            let mut max_ordering = -1;
+            let mut max_ordering = 0;
             for ordering in tool_ordering.values() {
                 if *ordering > max_ordering {
                     max_ordering = *ordering;
@@ -159,21 +159,52 @@ impl Program {
         let contexts = self.contexts.lock().unwrap();
         let tools = self.tools();
 
-        let mut raw_instructions = vec![];
+        let mut raw_instructions = vec![
+            match self.units {
+                Units::Metric => Instruction::G21(G21 {}),
+                Units::Imperial => Instruction::G20(G20 {}),
+            },
+            Instruction::Empty(Empty {}),
+        ];
+
         for tool in tools {
             if let Some(context) = contexts.get(&tool) {
                 let locked_context = &mut context.lock().unwrap();
+
+                // Tool change
+                raw_instructions.append(&mut vec![
+                    Instruction::Empty(Empty {}),
+                    Instruction::Message(Message { text: format!("Tool change: {}", tool)}),
+                    Instruction::G0(G0 {
+                        x: None,
+                        y: None,
+                        z: Some(locked_context.z_tool_change),
+                    }),
+                    Instruction::M5(M5 {}),
+                    Instruction::M6(M6 {
+                        t: self.tool_ordering(tool).unwrap(),
+                    }),
+                    Instruction::S(S {x: tool.spindle_speed()}),
+                    if tool.direction() == Direction::Clockwise {
+                        Instruction::M3(M3 {})
+                    } else {
+                        Instruction::M4(M4 {})
+                    }
+                ]);
+
+                // Add tool instructions
                 raw_instructions.append(&mut locked_context.to_instructions());
             }
         }
 
+        // End program
+        raw_instructions.push(Instruction::Empty(Empty {}));
+        raw_instructions.push(Instruction::M2(M2 {}));
+
+        // Trim duplicated instructions
         let raw_length = raw_instructions.len();
         let mut instructions = vec![];
         for (index, instruction) in (&raw_instructions).iter().enumerate() {
-            if (index == 0 || index == raw_length - 1) && *instruction == Instruction::Empty(Empty {}) {
-                continue;
-            }
-
             if index < raw_length - 1 && instruction == &raw_instructions[index + 1] {
                 continue;
             }
@@ -295,6 +326,15 @@ mod tests {
         let instructions = program.to_instructions();
 
         let expected_output = vec![
+            Instruction::G21(G21 {}),
+            Instruction::Empty(Empty {}),
+            Instruction::Message(Message { text: "Tool change: Cylindrical tool: diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min".to_string() }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
+            Instruction::M5(M5 {}),
+            Instruction::M6(M6 { t: 1 }),
+            Instruction::S(S { x: 5000.0 }),
+            Instruction::M3(M3 {}),
+            Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 0, y = 0".to_string() }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::G0(G0 { x: Some(0.0), y: Some(0.0), z: None }),
@@ -309,6 +349,13 @@ mod tests {
             Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(-0.1), f: None }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::Empty(Empty {}),
+            Instruction::Message(Message { text: "Tool change: Conical: angle = 45°, diameter = 15mm, length = 18.1066mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min".to_string() }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
+            Instruction::M5(M5 {}),
+            Instruction::M6(M6 { t: 2 }),
+            Instruction::S(S { x: 5000.0 }),
+            Instruction::M3(M3 {}),
+            Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 5, y = 10".to_string() }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::G0(G0 { x: Some(10.0), y: Some(20.0), z: None }),
@@ -322,15 +369,26 @@ mod tests {
             Instruction::G1(G1 { x: Some(10.0), y: Some(20.0), z: Some(-0.1), f: None }),
             Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(-0.1), f: None }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
+            Instruction::Empty(Empty {}),
+            Instruction::M2(M2 {}),
         ];
 
         assert_eq!(instructions, expected_output);
 
-        program.set_tool_ordering(tool2, 0);
+        program.set_tool_ordering(tool2, 1);
 
         let instructions = program.to_instructions();
 
         let expected_output = vec![
+            Instruction::G21(G21 {}),
+            Instruction::Empty(Empty {}),
+            Instruction::Message(Message { text: "Tool change: Conical: angle = 45°, diameter = 15mm, length = 18.1066mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min".to_string() }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
+            Instruction::M5(M5 {}),
+            Instruction::M6(M6 { t: 1 }),
+            Instruction::S(S { x: 5000.0 }),
+            Instruction::M3(M3 {}),
+            Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 5, y = 10".to_string() }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::G0(G0 { x: Some(10.0), y: Some(20.0), z: None }),
@@ -345,6 +403,13 @@ mod tests {
             Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(-0.1), f: None }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::Empty(Empty {}),
+            Instruction::Message(Message { text: "Tool change: Cylindrical tool: diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min".to_string() }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
+            Instruction::M5(M5 {}),
+            Instruction::M6(M6 { t: 2 }),
+            Instruction::S(S { x: 5000.0 }),
+            Instruction::M3(M3 {}),
+            Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 0, y = 0".to_string() }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::G0(G0 { x: Some(0.0), y: Some(0.0), z: None }),
@@ -358,6 +423,8 @@ mod tests {
             Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(-0.1), f: None }),
             Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(-0.1), f: None }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
+            Instruction::Empty(Empty {}),
+            Instruction::M2(M2 {}),
         ];
 
         assert_eq!(instructions, expected_output);
@@ -403,11 +470,20 @@ mod tests {
             ));
         });
 
-        program.set_tool_ordering(tool2, 0);
+        program.set_tool_ordering(tool2, 1);
 
         let gcode = program.to_gcode();
 
         let expected_output = vec![
+            "G21".to_string(),
+            "".to_string(),
+            "(MSG,Tool change: Conical: angle = 45°, diameter = 15mm, length = 18.1066mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)".to_string(),
+            "G0 Z50".to_string(),
+            "M5".to_string(),
+            "T1 M6".to_string(),
+            "S5000".to_string(),
+            "M3".to_string(),
+            "".to_string(),
             ";(Cut path at: x = 5, y = 10)".to_string(),
             "G0 Z10".to_string(),
             "G0 X10 Y20".to_string(),
@@ -422,6 +498,13 @@ mod tests {
             "G1 X20 Y20 Z-0.1".to_string(),
             "G0 Z10".to_string(),
             "".to_string(),
+            "(MSG,Tool change: Cylindrical tool: diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)".to_string(),
+            "G0 Z50".to_string(),
+            "M5".to_string(),
+            "T2 M6".to_string(),
+            "S5000".to_string(),
+            "M3".to_string(),
+            "".to_string(),
             ";(Cut path at: x = 0, y = 0)".to_string(),
             "G0 Z10".to_string(),
             "G0 X0 Y0".to_string(),
@@ -435,6 +518,8 @@ mod tests {
             "G1 X0 Y0 Z-0.1".to_string(),
             "G1 X5 Y10 Z-0.1".to_string(),
             "G0 Z10".to_string(),
+            "".to_string(),
+            "M2".to_string(),
         ].join("\n");
 
         assert_eq!(gcode, expected_output);
