@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{tools::*, types::*};
+use crate::{tools::*, types::*, program::*, cuts::*};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ResolutionMode {
     High,
@@ -12,55 +12,14 @@ pub enum ResolutionMode {
     Manual,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, Copy, Clone)]
-pub struct Bounds {
-    pub min: Vector3,
-    pub max: Vector3,
-}
-
-impl Bounds {
-    pub fn max() -> Self {
-        Self {
-            min: Vector3::max(),
-            max: Vector3::min(),
-        }
-    }
-
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
-        Self {
-            min: Vector3::new(0.0, 0.0, 0.0),
-            max: Vector3::new(x, y, z),
-        }
-    }
-
-    pub fn size(&self) -> Vector3 {
-        Vector3::new(
-            self.max.x - self.min.x,
-            self.max.y - self.min.y,
-            self.max.z - self.min.z,
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
 pub struct Workpiece {
     pub automatic: bool,
     pub margin: f64,
     pub bounds: Bounds,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct CamoticsTool {
-    pub units: Units,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub angle: Option<f64>,
-    pub length: f64,
-    pub diameter: f64,
-    pub number: u32,
-    pub shape: CamoticsToolShape,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum CamoticsToolShape {
     Cylindrical,
@@ -72,6 +31,17 @@ impl Default for CamoticsToolShape {
     fn default() -> Self {
         Self::Cylindrical
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+pub struct CamoticsTool {
+    pub units: Units,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub angle: Option<f64>,
+    pub length: f64,
+    pub diameter: f64,
+    pub number: u32,
+    pub shape: CamoticsToolShape,
 }
 
 impl CamoticsTool {
@@ -105,7 +75,7 @@ impl CamoticsTool {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Camotics {
     #[serde(skip_serializing)]
     pub name: String,
@@ -142,6 +112,12 @@ impl Camotics {
         }
     }
 
+    pub fn from_program(name: String, program: Program) -> Self {
+        let tools = program.tools();
+        let workpiece = program.bounds();
+        Self::new(name, tools, workpiece)
+    }
+
     pub fn to_json_string(&self) -> String {
         serde_json::to_string_pretty(&self).unwrap()
     }
@@ -149,6 +125,8 @@ impl Camotics {
 
 #[cfg(test)]
 mod tests {
+    use common_macros::hash_map;
+
     use serde_json::Value;
 
     use super::*;
@@ -228,5 +206,55 @@ mod tests {
         .unwrap();
 
         assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn test_camotics_from_program() {
+        let mut program = Program::new(Units::Metric, 10.0, 50.0);
+
+        let tool = Tool::cylindrical(
+            Units::Metric,
+            50.0,
+            4.0,
+            Direction::Clockwise,
+            5000.0,
+            400.0,
+        );
+
+        program.extend(tool, |context| {
+            context.append_cut(Cut::path(
+                Vector3::new(0.0, 0.0, 3.0),
+                vec![Segment::line(Vector2::default(), Vector2::new(-28.0, -30.0))],
+                -0.1,
+                1.0
+            ));
+
+            context.append_cut(Cut::path(
+                Vector3::new(0.0, 0.0, 3.0),
+                vec![
+                    Segment::line(Vector2::new(23.0, 12.0), Vector2::new(5.0, 10.0)),
+                    Segment::line(Vector2::new(5.0, 10.0), Vector2::new(67.0, 102.0)),
+                    Segment::line(Vector2::new(67.0, 102.0), Vector2::new(23.0, 12.0)),
+                ],
+                -0.1,
+                1.0
+            ));
+        });
+
+        let camotics = Camotics::from_program("test-project".to_string(), program.clone());
+
+        assert_eq!(camotics, Camotics {
+            name: "test-project".to_string(),
+            units: Units::Metric,
+            resolution_mode: ResolutionMode::Manual,
+            resolution: 0.5,
+            tools: hash_map!{1 => CamoticsTool::from_tool(tool, 1)},
+            workpiece: Workpiece {
+                automatic: false,
+                margin: 0.0,
+                bounds: program.bounds()
+            },
+            files: vec!["test-project.ngc".to_string()]
+        });
     }
 }

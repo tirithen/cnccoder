@@ -57,10 +57,53 @@ impl Path {
         Self { start, segments, end_z, max_step_z }
     }
 
+    pub fn bounds(&self) -> Bounds {
+        let mut bounds = Bounds::default();
+
+        for segment in self.segments.iter() {
+            match segment {
+                Segment::Arc(_arc) => println!("WARNING: bounding box is not calculated for Arc segments yet, ensure that dependent code has other ways of calculating relevant bounding box"),
+                Segment::Line(line) => {
+                    let max_x = self.start.x + if line.from.x > line.to.x {line.from.x} else {line.to.x};
+                    if bounds.max.x < max_x {
+                        bounds.max.x = max_x;
+                    }
+
+                    let max_y = self.start.y + if line.from.y > line.to.y {line.from.y} else {line.to.y};
+                    if bounds.max.y < max_y {
+                        bounds.max.y = max_y;
+                    }
+
+                    let max_z = if self.start.z > self.end_z {self.start.z} else {self.end_z};
+                    if bounds.max.z < max_z {
+                        bounds.max.z = max_z;
+                    }
+
+                    let min_x = self.start.x + if line.from.x < line.to.x {line.from.x} else {line.to.x};
+                    if bounds.min.x > min_x {
+                        bounds.min.x = min_x;
+                    }
+
+                    let min_y = self.start.y + if line.from.y < line.to.y {line.from.y} else {line.to.y};
+                    if bounds.min.y > min_y {
+                        bounds.min.y = min_y;
+                    }
+
+                    let min_z = if self.start.z < self.end_z {self.start.z} else {self.end_z};
+                    if bounds.min.z > min_z {
+                        bounds.min.z = min_z;
+                    }
+                }
+            }
+        }
+
+        bounds
+    }
+
     pub fn to_instructions(&self, context: Context) -> Vec<Instruction> {
         let mut instructions = vec![];
 
-        if self.segments.len() == 0 {
+        if self.segments.is_empty() {
             return instructions;
         }
 

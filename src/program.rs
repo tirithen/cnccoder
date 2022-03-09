@@ -14,9 +14,15 @@ pub enum Operation {
 }
 
 impl Operation {
+    pub fn bounds(&self) -> Bounds {
+        match self {
+            Self::Cut(o) => o.bounds()
+        }
+    }
+
     pub fn to_instructions(&self, context: Context) -> Vec<Instruction> {
         match self {
-            Self::Cut(cut) => cut.to_instructions(context),
+            Self::Cut(o) => o.to_instructions(context),
         }
     }
 }
@@ -62,6 +68,22 @@ impl Context {
         self.z_tool_change
     }
 
+    pub fn bounds(&self) -> Bounds {
+        let mut bounds = Bounds::default();
+
+        for operation in self.operations.iter() {
+            let operation_bounds = operation.bounds();
+            bounds.min.x = if bounds.min.x > operation_bounds.min.x {operation_bounds.min.x} else {bounds.min.x};
+            bounds.min.y = if bounds.min.y > operation_bounds.min.y {operation_bounds.min.y} else {bounds.min.y};
+            bounds.min.z = if bounds.min.z > operation_bounds.min.z {operation_bounds.min.z} else {bounds.min.z};
+            bounds.max.x = if bounds.max.x < operation_bounds.max.x {operation_bounds.max.x} else {bounds.max.x};
+            bounds.max.y = if bounds.max.y < operation_bounds.max.y {operation_bounds.max.y} else {bounds.max.y};
+            bounds.max.z = if bounds.max.z < operation_bounds.max.z {operation_bounds.max.z} else {bounds.max.z};
+        }
+
+        bounds
+    }
+
     pub fn to_instructions(&self) -> Vec<Instruction> {
         let mut instructions = vec![];
 
@@ -73,6 +95,8 @@ impl Context {
     }
 }
 
+
+#[derive(Debug, Clone)]
 pub struct Program {
     z_safe: f64,
     z_tool_change: f64,
@@ -153,6 +177,26 @@ impl Program {
         }
 
         tools
+    }
+
+    pub fn bounds(&self) -> Bounds {
+        let mut bounds = Bounds::default();
+        let contexts = self.contexts.lock().unwrap();
+        let tools = self.tools();
+
+        for tool in tools {
+            if let Some(context) = contexts.get(&tool) {
+                let context_bounds = context.lock().unwrap().bounds();
+                bounds.min.x = if bounds.min.x > context_bounds.min.x {context_bounds.min.x} else {bounds.min.x};
+                bounds.min.y = if bounds.min.y > context_bounds.min.y {context_bounds.min.y} else {bounds.min.y};
+                bounds.min.z = if bounds.min.z > context_bounds.min.z {context_bounds.min.z} else {bounds.min.z};
+                bounds.max.x = if bounds.max.x < context_bounds.max.x {context_bounds.max.x} else {bounds.max.x};
+                bounds.max.y = if bounds.max.y < context_bounds.max.y {context_bounds.max.y} else {bounds.max.y};
+                bounds.max.z = if bounds.max.z < context_bounds.max.z {context_bounds.max.z} else {bounds.max.z};
+            }
+        }
+
+        bounds
     }
 
     pub fn to_instructions(&self) -> Vec<Instruction> {
@@ -523,5 +567,46 @@ mod tests {
         ].join("\n");
 
         assert_eq!(gcode, expected_output);
+    }
+
+    #[test]
+    fn test_program_bounds() {
+        let mut program = Program::new(Units::Metric, 10.0, 50.0);
+
+        let tool = Tool::cylindrical(
+            Units::Metric,
+            50.0,
+            4.0,
+            Direction::Clockwise,
+            5000.0,
+            400.0,
+        );
+
+        program.extend(tool, |context| {
+            context.append_cut(Cut::path(
+                Vector3::new(0.0, 0.0, 3.0),
+                vec![Segment::line(Vector2::default(), Vector2::new(-28.0, -30.0))],
+                -0.1,
+                1.0
+            ));
+
+            context.append_cut(Cut::path(
+                Vector3::new(0.0, 0.0, 3.0),
+                vec![
+                    Segment::line(Vector2::new(23.0, 12.0), Vector2::new(5.0, 10.0)),
+                    Segment::line(Vector2::new(5.0, 10.0), Vector2::new(67.0, 102.0)),
+                    Segment::line(Vector2::new(67.0, 102.0), Vector2::new(23.0, 12.0)),
+                ],
+                -0.1,
+                1.0
+            ));
+        });
+
+        let bounds = program.bounds();
+
+        assert_eq!(bounds, Bounds {
+            min: Vector3::new(-28.0, -30.0, -0.1),
+            max: Vector3::new(67.0, 102.0, 3.0),
+        });
     }
 }

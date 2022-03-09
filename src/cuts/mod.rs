@@ -15,6 +15,12 @@ impl Cut {
         Self::Path(Path::new(start, segments, end_z, max_step_z))
     }
 
+    pub fn bounds(&self) -> Bounds {
+        match self {
+            Self::Path(c) => c.bounds(),
+        }
+    }
+
     pub fn to_instructions(&self, context: Context) -> Vec<Instruction> {
         match self {
             Self::Path(cut) => cut.to_instructions(context),

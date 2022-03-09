@@ -182,6 +182,38 @@ impl fmt::Display for Vector3 {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
+pub struct Bounds {
+    pub min: Vector3,
+    pub max: Vector3,
+}
+
+impl Default for Bounds {
+    fn default() -> Self {
+        Self {
+            min: Vector3::max(),
+            max: Vector3::min(),
+        }
+    }
+}
+
+impl Bounds {
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
+        Self {
+            min: Vector3::new(0.0, 0.0, 0.0),
+            max: Vector3::new(x, y, z),
+        }
+    }
+
+    pub fn size(&self) -> Vector3 {
+        Vector3::new(
+            self.max.x - self.min.x,
+            self.max.y - self.min.y,
+            self.max.z - self.min.z,
+        )
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum Units {
