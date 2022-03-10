@@ -120,7 +120,6 @@ impl Tool {
     }
 }
 
-
 impl fmt::Display for Tool {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let description = match self {

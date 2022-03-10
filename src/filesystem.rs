@@ -2,10 +2,10 @@ use std::{fs::File, io::Write};
 
 use anyhow::Result;
 
-use crate::{program::*, camotics::*};
+use crate::{camotics::*, program::*};
 
-pub fn write_project(name: String, program: Program) -> Result<()> {
-    let camotics = Camotics::from_program(name.clone(), program.clone());
+pub fn write_project(name: &str, program: Program) -> Result<()> {
+    let camotics = Camotics::from_program(name, program.clone());
     let gcode = program.to_gcode();
 
     let mut camotics_file = File::create(format!("{}.camotics", name))?;
@@ -26,7 +26,7 @@ mod tests {
     use anyhow::Result;
     use serde_json::Value;
 
-    use crate::{types::*, tools::*, cuts::*};
+    use crate::{cuts::*, tools::*, types::*};
 
     use super::*;
 
@@ -46,9 +46,12 @@ mod tests {
         program.extend(tool, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(0.0, 0.0, 3.0),
-                vec![Segment::line(Vector2::default(), Vector2::new(-28.0, -30.0))],
+                vec![Segment::line(
+                    Vector2::default(),
+                    Vector2::new(-28.0, -30.0),
+                )],
                 -0.1,
-                1.0
+                1.0,
             ));
 
             context.append_cut(Cut::path(
@@ -59,16 +62,18 @@ mod tests {
                     Segment::line(Vector2::new(67.0, 102.0), Vector2::new(23.0, 12.0)),
                 ],
                 -0.1,
-                1.0
+                1.0,
             ));
         });
 
-        write_project("test-temp".to_string(), program)?;
+        write_project("test-temp", program)?;
 
-        let camotics: Value = serde_json::from_str(&read_to_string("test-temp.camotics".to_string())?)?;
+        let camotics: Value =
+            serde_json::from_str(&read_to_string("test-temp.camotics".to_string())?)?;
         remove_file("test-temp.camotics")?;
 
-        let expected_camotics_output: Value = serde_json::from_str(r#"{
+        let expected_camotics_output: Value = serde_json::from_str(
+            r#"{
             "units": "metric",
             "resolution-mode": "manual",
             "resolution": 0.5,
@@ -100,10 +105,10 @@ mod tests {
             "files": [
                 "test-temp.ngc"
             ]
-        }"#)?;
+        }"#,
+        )?;
 
         assert_eq!(camotics, expected_camotics_output);
-
 
         let gcode = read_to_string("test-temp.ngc".to_string())?;
         remove_file("test-temp.ngc")?;

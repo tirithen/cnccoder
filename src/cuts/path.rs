@@ -54,7 +54,12 @@ pub struct Path {
 
 impl Path {
     pub fn new(start: Vector3, segments: Vec<Segment>, end_z: f64, max_step_z: f64) -> Self {
-        Self { start, segments, end_z, max_step_z }
+        Self {
+            start,
+            segments,
+            end_z,
+            max_step_z,
+        }
     }
 
     pub fn bounds(&self) -> Bounds {

@@ -7,7 +7,7 @@ pub use path::*;
 
 #[derive(Debug, Clone)]
 pub enum Cut {
-    Path(Path)
+    Path(Path),
 }
 
 impl Cut {

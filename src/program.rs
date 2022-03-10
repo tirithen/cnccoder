@@ -1,6 +1,5 @@
-use std::collections::HashMap;
 use std::collections::hash_map::Entry::Vacant;
-use std::os::linux::raw;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -17,7 +16,7 @@ pub enum Operation {
 impl Operation {
     pub fn bounds(&self) -> Bounds {
         match self {
-            Self::Cut(o) => o.bounds()
+            Self::Cut(o) => o.bounds(),
         }
     }
 
@@ -27,7 +26,6 @@ impl Operation {
         }
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct Context {
@@ -74,12 +72,36 @@ impl Context {
 
         for operation in self.operations.iter() {
             let operation_bounds = operation.bounds();
-            bounds.min.x = if bounds.min.x > operation_bounds.min.x {operation_bounds.min.x} else {bounds.min.x};
-            bounds.min.y = if bounds.min.y > operation_bounds.min.y {operation_bounds.min.y} else {bounds.min.y};
-            bounds.min.z = if bounds.min.z > operation_bounds.min.z {operation_bounds.min.z} else {bounds.min.z};
-            bounds.max.x = if bounds.max.x < operation_bounds.max.x {operation_bounds.max.x} else {bounds.max.x};
-            bounds.max.y = if bounds.max.y < operation_bounds.max.y {operation_bounds.max.y} else {bounds.max.y};
-            bounds.max.z = if bounds.max.z < operation_bounds.max.z {operation_bounds.max.z} else {bounds.max.z};
+            bounds.min.x = if bounds.min.x > operation_bounds.min.x {
+                operation_bounds.min.x
+            } else {
+                bounds.min.x
+            };
+            bounds.min.y = if bounds.min.y > operation_bounds.min.y {
+                operation_bounds.min.y
+            } else {
+                bounds.min.y
+            };
+            bounds.min.z = if bounds.min.z > operation_bounds.min.z {
+                operation_bounds.min.z
+            } else {
+                bounds.min.z
+            };
+            bounds.max.x = if bounds.max.x < operation_bounds.max.x {
+                operation_bounds.max.x
+            } else {
+                bounds.max.x
+            };
+            bounds.max.y = if bounds.max.y < operation_bounds.max.y {
+                operation_bounds.max.y
+            } else {
+                bounds.max.y
+            };
+            bounds.max.z = if bounds.max.z < operation_bounds.max.z {
+                operation_bounds.max.z
+            } else {
+                bounds.max.z
+            };
         }
 
         bounds
@@ -95,7 +117,6 @@ impl Context {
         instructions
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct Program {
@@ -188,12 +209,36 @@ impl Program {
         for tool in tools {
             if let Some(context) = contexts.get(&tool) {
                 let context_bounds = context.lock().unwrap().bounds();
-                bounds.min.x = if bounds.min.x > context_bounds.min.x {context_bounds.min.x} else {bounds.min.x};
-                bounds.min.y = if bounds.min.y > context_bounds.min.y {context_bounds.min.y} else {bounds.min.y};
-                bounds.min.z = if bounds.min.z > context_bounds.min.z {context_bounds.min.z} else {bounds.min.z};
-                bounds.max.x = if bounds.max.x < context_bounds.max.x {context_bounds.max.x} else {bounds.max.x};
-                bounds.max.y = if bounds.max.y < context_bounds.max.y {context_bounds.max.y} else {bounds.max.y};
-                bounds.max.z = if bounds.max.z < context_bounds.max.z {context_bounds.max.z} else {bounds.max.z};
+                bounds.min.x = if bounds.min.x > context_bounds.min.x {
+                    context_bounds.min.x
+                } else {
+                    bounds.min.x
+                };
+                bounds.min.y = if bounds.min.y > context_bounds.min.y {
+                    context_bounds.min.y
+                } else {
+                    bounds.min.y
+                };
+                bounds.min.z = if bounds.min.z > context_bounds.min.z {
+                    context_bounds.min.z
+                } else {
+                    bounds.min.z
+                };
+                bounds.max.x = if bounds.max.x < context_bounds.max.x {
+                    context_bounds.max.x
+                } else {
+                    bounds.max.x
+                };
+                bounds.max.y = if bounds.max.y < context_bounds.max.y {
+                    context_bounds.max.y
+                } else {
+                    bounds.max.y
+                };
+                bounds.max.z = if bounds.max.z < context_bounds.max.z {
+                    context_bounds.max.z
+                } else {
+                    bounds.max.z
+                };
             }
         }
 
@@ -217,8 +262,10 @@ impl Program {
 
                 // Tool change
                 raw_instructions.append(&mut vec![
-                    Instruction::Message(Message { text: format!("Tool change: {}", tool)}),
-                    match tool.units() {
+                    Instruction::Message(Message {
+                        text: format!("Tool change: {}", tool),
+                    }),
+                    match locked_context.units {
                         Units::Metric => Instruction::G21(G21 {}),
                         Units::Imperial => Instruction::G20(G20 {}),
                     },
@@ -228,15 +275,15 @@ impl Program {
                         z: Some(locked_context.z_tool_change),
                     }),
                     Instruction::M5(M5 {}),
-                    Instruction::M6(M6 {
-                        t: tool_number,
+                    Instruction::M6(M6 { t: tool_number }),
+                    Instruction::S(S {
+                        x: tool.spindle_speed(),
                     }),
-                    Instruction::S(S {x: tool.spindle_speed()}),
                     if tool.direction() == Direction::Clockwise {
                         Instruction::M3(M3 {})
                     } else {
                         Instruction::M4(M4 {})
-                    }
+                    },
                 ]);
 
                 // Add tool instructions
@@ -263,7 +310,8 @@ impl Program {
     }
 
     pub fn to_gcode(&self) -> String {
-        self.to_instructions().iter()
+        self.to_instructions()
+            .iter()
             .map(|instruction| instruction.to_gcode())
             .collect::<Vec<String>>()
             .join("\n")
@@ -308,16 +356,19 @@ mod tests {
                 Vector3::new(0.0, 0.0, 3.0),
                 vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
                 -0.1,
-                1.0
+                1.0,
             ));
         });
 
         program.extend(tool2, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(5.0, 10.0, 3.0),
-                vec![Segment::line(Vector2::new(5.0, 10.0), Vector2::new(15.0, 10.0))],
+                vec![Segment::line(
+                    Vector2::new(5.0, 10.0),
+                    Vector2::new(15.0, 10.0),
+                )],
                 -0.1,
-                1.0
+                1.0,
             ));
         });
 
@@ -357,16 +408,19 @@ mod tests {
                 Vector3::new(0.0, 0.0, 3.0),
                 vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
                 -0.1,
-                1.0
+                1.0,
             ));
         });
 
         program.extend(tool2, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(5.0, 10.0, 3.0),
-                vec![Segment::line(Vector2::new(5.0, 10.0), Vector2::new(15.0, 10.0))],
+                vec![Segment::line(
+                    Vector2::new(5.0, 10.0),
+                    Vector2::new(15.0, 10.0),
+                )],
                 -0.1,
-                1.0
+                1.0,
             ));
         });
 
@@ -396,7 +450,7 @@ mod tests {
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::Empty(Empty {}),
             Instruction::Message(Message { text: "Tool change: Conical: angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min".to_string() }),
-            Instruction::G20(G20 {}),
+            Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
             Instruction::M6(M6 { t: 2 }),
@@ -428,7 +482,7 @@ mod tests {
 
         let expected_output = vec![
             Instruction::Message(Message { text: "Tool change: Conical: angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min".to_string() }),
-            Instruction::G20(G20 {}),
+            Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
             Instruction::M6(M6 { t: 1 }),
@@ -479,7 +533,7 @@ mod tests {
 
     #[test]
     fn test_program_to_gcode() {
-        let mut program = Program::new(Units::Metric, 10.0, 50.0);
+        let mut program = Program::new(Units::Imperial, 10.0, 50.0);
 
         let tool1 = Tool::cylindrical(
             Units::Metric,
@@ -504,16 +558,19 @@ mod tests {
                 Vector3::new(0.0, 0.0, 3.0),
                 vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
                 -0.1,
-                1.0
+                1.0,
             ));
         });
 
         program.extend(tool2, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(5.0, 10.0, 3.0),
-                vec![Segment::line(Vector2::new(5.0, 10.0), Vector2::new(15.0, 10.0))],
+                vec![Segment::line(
+                    Vector2::new(5.0, 10.0),
+                    Vector2::new(15.0, 10.0),
+                )],
                 -0.1,
-                1.0
+                1.0,
             ));
         });
 
@@ -545,7 +602,7 @@ mod tests {
             "G0 Z10".to_string(),
             "".to_string(),
             "(MSG,Tool change: Cylindrical tool: diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)".to_string(),
-            "G21".to_string(),
+            "G20".to_string(),
             "G0 Z50".to_string(),
             "M5".to_string(),
             "T2 M6".to_string(),
@@ -588,9 +645,12 @@ mod tests {
         program.extend(tool, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(0.0, 0.0, 3.0),
-                vec![Segment::line(Vector2::default(), Vector2::new(-28.0, -30.0))],
+                vec![Segment::line(
+                    Vector2::default(),
+                    Vector2::new(-28.0, -30.0),
+                )],
                 -0.1,
-                1.0
+                1.0,
             ));
 
             context.append_cut(Cut::path(
@@ -601,15 +661,18 @@ mod tests {
                     Segment::line(Vector2::new(67.0, 102.0), Vector2::new(23.0, 12.0)),
                 ],
                 -0.1,
-                1.0
+                1.0,
             ));
         });
 
         let bounds = program.bounds();
 
-        assert_eq!(bounds, Bounds {
-            min: Vector3::new(-28.0, -30.0, -0.1),
-            max: Vector3::new(67.0, 102.0, 3.0),
-        });
+        assert_eq!(
+            bounds,
+            Bounds {
+                min: Vector3::new(-28.0, -30.0, -0.1),
+                max: Vector3::new(67.0, 102.0, 3.0),
+            }
+        );
     }
 }

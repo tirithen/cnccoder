@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{tools::*, types::*, program::*};
+use crate::{program::*, tools::*, types::*};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -89,7 +89,7 @@ pub struct Camotics {
 }
 
 impl Camotics {
-    pub fn new(name: String, tools: Vec<Tool>, workpiece: Bounds) -> Self {
+    pub fn new(name: &str, tools: Vec<Tool>, workpiece: Bounds) -> Self {
         let mut tools_map = HashMap::new();
 
         for (index, tool) in tools.iter().enumerate() {
@@ -98,7 +98,7 @@ impl Camotics {
         }
 
         Self {
-            name: name.clone(),
+            name: name.to_string(),
             units: Units::Metric,
             resolution_mode: ResolutionMode::Manual,
             resolution: 0.5,
@@ -112,7 +112,7 @@ impl Camotics {
         }
     }
 
-    pub fn from_program(name: String, program: Program) -> Self {
+    pub fn from_program(name: &str, program: Program) -> Self {
         let tools = program.tools();
         let workpiece = program.bounds();
         Self::new(name, tools, workpiece)
@@ -129,8 +129,8 @@ mod tests {
 
     use serde_json::Value;
 
-    use crate::cuts::*;
     use super::*;
+    use crate::cuts::*;
 
     #[test]
     fn test_serialization() {
@@ -225,9 +225,12 @@ mod tests {
         program.extend(tool, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(0.0, 0.0, 3.0),
-                vec![Segment::line(Vector2::default(), Vector2::new(-28.0, -30.0))],
+                vec![Segment::line(
+                    Vector2::default(),
+                    Vector2::new(-28.0, -30.0),
+                )],
                 -0.1,
-                1.0
+                1.0,
             ));
 
             context.append_cut(Cut::path(
@@ -238,24 +241,27 @@ mod tests {
                     Segment::line(Vector2::new(67.0, 102.0), Vector2::new(23.0, 12.0)),
                 ],
                 -0.1,
-                1.0
+                1.0,
             ));
         });
 
-        let camotics = Camotics::from_program("test-project".to_string(), program.clone());
+        let camotics = Camotics::from_program("test-project", program.clone());
 
-        assert_eq!(camotics, Camotics {
-            name: "test-project".to_string(),
-            units: Units::Metric,
-            resolution_mode: ResolutionMode::Manual,
-            resolution: 0.5,
-            tools: hash_map!{1 => CamoticsTool::from_tool(tool, 1)},
-            workpiece: Workpiece {
-                automatic: false,
-                margin: 0.0,
-                bounds: program.bounds()
-            },
-            files: vec!["test-project.ngc".to_string()]
-        });
+        assert_eq!(
+            camotics,
+            Camotics {
+                name: "test-project".to_string(),
+                units: Units::Metric,
+                resolution_mode: ResolutionMode::Manual,
+                resolution: 0.5,
+                tools: hash_map! {1 => CamoticsTool::from_tool(tool, 1)},
+                workpiece: Workpiece {
+                    automatic: false,
+                    margin: 0.0,
+                    bounds: program.bounds()
+                },
+                files: vec!["test-project.ngc".to_string()]
+            }
+        );
     }
 }
