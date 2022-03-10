@@ -108,9 +108,8 @@ mod tests {
         let gcode = read_to_string("test-temp.ngc".to_string())?;
         remove_file("test-temp.ngc")?;
 
-        assert_eq!(gcode, r#"G21
-
-(MSG,Tool change: Cylindrical tool: diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)
+        assert_eq!(gcode, r#"(MSG,Tool change: Cylindrical tool: diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)
+G21
 G0 Z50
 M5
 T1 M6

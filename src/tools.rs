@@ -71,6 +71,14 @@ impl Tool {
         ))
     }
 
+    pub fn units(&self) -> Units {
+        match self {
+            Self::Cylindrical(t) => t.units,
+            Self::Ballnose(t) => t.units,
+            Self::Conical(t) => t.units,
+        }
+    }
+
     pub fn diameter(&self) -> f64 {
         match self {
             Self::Cylindrical(t) => t.diameter,

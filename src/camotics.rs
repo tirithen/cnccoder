@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{tools::*, types::*, program::*, cuts::*};
+use crate::{tools::*, types::*, program::*};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -129,6 +129,7 @@ mod tests {
 
     use serde_json::Value;
 
+    use crate::cuts::*;
     use super::*;
 
     #[test]

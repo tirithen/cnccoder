@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::Vacant;
+use std::os::linux::raw;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -203,22 +204,24 @@ impl Program {
         let contexts = self.contexts.lock().unwrap();
         let tools = self.tools();
 
-        let mut raw_instructions = vec![
-            match self.units {
-                Units::Metric => Instruction::G21(G21 {}),
-                Units::Imperial => Instruction::G20(G20 {}),
-            },
-            Instruction::Empty(Empty {}),
-        ];
+        let mut raw_instructions = vec![];
 
         for tool in tools {
             if let Some(context) = contexts.get(&tool) {
                 let locked_context = &mut context.lock().unwrap();
+                let tool_number = self.tool_ordering(tool).unwrap();
+
+                if tool_number > 1 {
+                    raw_instructions.push(Instruction::Empty(Empty {}));
+                }
 
                 // Tool change
                 raw_instructions.append(&mut vec![
-                    Instruction::Empty(Empty {}),
                     Instruction::Message(Message { text: format!("Tool change: {}", tool)}),
+                    match tool.units() {
+                        Units::Metric => Instruction::G21(G21 {}),
+                        Units::Imperial => Instruction::G20(G20 {}),
+                    },
                     Instruction::G0(G0 {
                         x: None,
                         y: None,
@@ -226,7 +229,7 @@ impl Program {
                     }),
                     Instruction::M5(M5 {}),
                     Instruction::M6(M6 {
-                        t: self.tool_ordering(tool).unwrap(),
+                        t: tool_number,
                     }),
                     Instruction::S(S {x: tool.spindle_speed()}),
                     if tool.direction() == Direction::Clockwise {
@@ -341,9 +344,9 @@ mod tests {
         );
 
         let tool2 = Tool::conical(
-            Units::Metric,
+            Units::Imperial,
             45.0,
-            15.0,
+            1.0,
             Direction::Clockwise,
             5000.0,
             400.0,
@@ -370,9 +373,8 @@ mod tests {
         let instructions = program.to_instructions();
 
         let expected_output = vec![
-            Instruction::G21(G21 {}),
-            Instruction::Empty(Empty {}),
             Instruction::Message(Message { text: "Tool change: Cylindrical tool: diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min".to_string() }),
+            Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
             Instruction::M6(M6 { t: 1 }),
@@ -393,7 +395,8 @@ mod tests {
             Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(-0.1), f: None }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::Empty(Empty {}),
-            Instruction::Message(Message { text: "Tool change: Conical: angle = 45°, diameter = 15mm, length = 18.1066mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min".to_string() }),
+            Instruction::Message(Message { text: "Tool change: Conical: angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min".to_string() }),
+            Instruction::G20(G20 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
             Instruction::M6(M6 { t: 2 }),
@@ -424,9 +427,8 @@ mod tests {
         let instructions = program.to_instructions();
 
         let expected_output = vec![
-            Instruction::G21(G21 {}),
-            Instruction::Empty(Empty {}),
-            Instruction::Message(Message { text: "Tool change: Conical: angle = 45°, diameter = 15mm, length = 18.1066mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min".to_string() }),
+            Instruction::Message(Message { text: "Tool change: Conical: angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min".to_string() }),
+            Instruction::G20(G20 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
             Instruction::M6(M6 { t: 1 }),
@@ -448,6 +450,7 @@ mod tests {
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::Empty(Empty {}),
             Instruction::Message(Message { text: "Tool change: Cylindrical tool: diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min".to_string() }),
+            Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
             Instruction::M6(M6 { t: 2 }),
@@ -488,9 +491,9 @@ mod tests {
         );
 
         let tool2 = Tool::conical(
-            Units::Metric,
+            Units::Imperial,
             45.0,
-            15.0,
+            1.0,
             Direction::Clockwise,
             5000.0,
             400.0,
@@ -519,9 +522,8 @@ mod tests {
         let gcode = program.to_gcode();
 
         let expected_output = vec![
-            "G21".to_string(),
-            "".to_string(),
-            "(MSG,Tool change: Conical: angle = 45°, diameter = 15mm, length = 18.1066mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)".to_string(),
+            "(MSG,Tool change: Conical: angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min)".to_string(),
+            "G20".to_string(),
             "G0 Z50".to_string(),
             "M5".to_string(),
             "T1 M6".to_string(),
@@ -543,6 +545,7 @@ mod tests {
             "G0 Z10".to_string(),
             "".to_string(),
             "(MSG,Tool change: Cylindrical tool: diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)".to_string(),
+            "G21".to_string(),
             "G0 Z50".to_string(),
             "M5".to_string(),
             "T2 M6".to_string(),

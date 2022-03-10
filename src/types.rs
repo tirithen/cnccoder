@@ -228,7 +228,7 @@ impl fmt::Display for Units {
             "{}",
             match self {
                 Units::Metric => "mm",
-                Units::Imperial => "inches",
+                Units::Imperial => "\"",
             }
         )
     }
