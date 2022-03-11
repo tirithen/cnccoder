@@ -128,6 +128,7 @@ pub struct Program {
 }
 
 impl Program {
+    #[must_use]
     pub fn new(units: Units, z_safe: f64, z_tool_change: f64) -> Program {
         Program {
             z_safe,
@@ -138,6 +139,17 @@ impl Program {
         }
     }
 
+    #[must_use]
+    pub fn z_safe(&self) -> f64 {
+        self.z_safe
+    }
+
+    #[must_use]
+    pub fn z_tool_change(&self) -> f64 {
+        self.z_tool_change
+    }
+
+    #[must_use]
     pub fn tool_ordering(&self, tool: Tool) -> Option<u32> {
         if let Some(ordering) = self.tool_ordering.lock().unwrap().get(&tool) {
             return Some(*ordering);
@@ -146,6 +158,7 @@ impl Program {
         None
     }
 
+    #[must_use]
     pub fn set_tool_ordering(&self, tool: Tool, ordering: u32) {
         let mut tool_ordering = self.tool_ordering.lock().unwrap();
 
@@ -187,6 +200,7 @@ impl Program {
         action(locked_context);
     }
 
+    #[must_use]
     pub fn tools(&self) -> Vec<Tool> {
         let mut tools = vec![];
 
@@ -201,6 +215,7 @@ impl Program {
         tools
     }
 
+    #[must_use]
     pub fn bounds(&self) -> Bounds {
         let mut bounds = Bounds::default();
         let contexts = self.contexts.lock().unwrap();
@@ -245,6 +260,7 @@ impl Program {
         bounds
     }
 
+    #[must_use]
     pub fn to_instructions(&self) -> Vec<Instruction> {
         let contexts = self.contexts.lock().unwrap();
         let tools = self.tools();
@@ -309,6 +325,7 @@ impl Program {
         instructions
     }
 
+    #[must_use]
     pub fn to_gcode(&self) -> String {
         self.to_instructions()
             .iter()

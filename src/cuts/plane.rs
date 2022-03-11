@@ -13,6 +13,7 @@ pub struct Plane {
 }
 
 impl Plane {
+    #[must_use]
     pub fn new(start: Vector3, size: Vector2, end_z: f64, max_step_z: f64) -> Self {
         Self {
             start,
@@ -23,6 +24,7 @@ impl Plane {
         }
     }
 
+    #[must_use]
     pub fn new_with_slope(start: Vector3, size: Vector2, end_z: f64, end_z_stop: f64, max_step_z: f64) -> Self {
         Self {
             start,
@@ -33,6 +35,7 @@ impl Plane {
         }
     }
 
+    #[must_use]
     pub fn bounds(&self) -> Bounds {
         Bounds {
             min: Vector3::new(self.start.x, self.start.y, self.end_z.min(self.end_z_stop)),
@@ -40,6 +43,7 @@ impl Plane {
         }
     }
 
+    #[must_use]
     pub fn to_instructions(&self, context: Context) -> Vec<Instruction> {
         let tool_radius = context.tool().radius();
         let mut instructions = Vec::new();

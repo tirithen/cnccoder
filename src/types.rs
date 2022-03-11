@@ -19,6 +19,7 @@ macro_rules! as_serde_tuple {
         }
 
         impl<'de> Deserialize<'de> for $sname {
+            #[must_use]
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
                 where D: Deserializer<'de>
             {
@@ -31,6 +32,7 @@ macro_rules! as_serde_tuple {
         }
 
         impl Serialize for $sname {
+            #[must_use]
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
                 S: Serializer,
@@ -53,10 +55,12 @@ as_serde_tuple! {
 }
 
 impl Vector2 {
+    #[must_use]
     pub fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
 
+    #[must_use]
     pub fn min() -> Self {
         Self {
             x: f64::MIN,
@@ -64,6 +68,7 @@ impl Vector2 {
         }
     }
 
+    #[must_use]
     pub fn max() -> Self {
         Self {
             x: f64::MAX,
@@ -71,26 +76,31 @@ impl Vector2 {
         }
     }
 
+    #[must_use]
     pub fn distance_to(&self, to: Self) -> f64 {
         ((self.x - to.x) * (self.x - to.x) + (self.y - to.y) * (self.y - to.y)).sqrt()
     }
 
     /// Computes the angle in radians with respect to the positive x-axis
+    #[must_use]
     pub fn angle(&self) -> f64 {
         (-self.x).atan2(-self.y) + PI
     }
 
     /// Computes the angle in degrees with respect to the positive x-axis
+    #[must_use]
     pub fn angle_degrees(&self) -> f64 {
         self.angle().to_degrees()
     }
 
+    #[must_use]
     pub fn add_x(&self, value: f64) -> Self {
         let mut vector = *self;
         vector.x += value;
         vector
     }
 
+    #[must_use]
     pub fn add_y(&self, value: f64) -> Self {
         let mut vector = *self;
         vector.y += value;
@@ -119,10 +129,12 @@ as_serde_tuple! {
 }
 
 impl Vector3 {
+    #[must_use]
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
 
+    #[must_use]
     pub fn min() -> Self {
         Self {
             x: f64::MIN,
@@ -131,6 +143,7 @@ impl Vector3 {
         }
     }
 
+    #[must_use]
     pub fn max() -> Self {
         Self {
             x: f64::MAX,
@@ -139,30 +152,36 @@ impl Vector3 {
         }
     }
 
+    #[must_use]
     pub fn xy(&self) -> Vector2 {
         Vector2::new(self.x, self.y)
     }
 
+    #[must_use]
     pub fn xz(&self) -> Vector2 {
         Vector2::new(self.x, self.z)
     }
 
+    #[must_use]
     pub fn yz(&self) -> Vector2 {
         Vector2::new(self.y, self.z)
     }
 
+    #[must_use]
     pub fn add_x(&self, value: f64) -> Self {
         let mut vector = *self;
         vector.x += value;
         vector
     }
 
+    #[must_use]
     pub fn add_y(&self, value: f64) -> Self {
         let mut vector = *self;
         vector.y += value;
         vector
     }
 
+    #[must_use]
     pub fn add_z(&self, value: f64) -> Self {
         let mut vector = *self;
         vector.z += value;
@@ -198,6 +217,7 @@ impl Default for Bounds {
 }
 
 impl Bounds {
+    #[must_use]
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         Self {
             min: Vector3::new(0.0, 0.0, 0.0),
@@ -205,6 +225,7 @@ impl Bounds {
         }
     }
 
+    #[must_use]
     pub fn size(&self) -> Vector3 {
         Vector3::new(
             self.max.x - self.min.x,

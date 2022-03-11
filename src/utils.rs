@@ -1,7 +1,9 @@
+#[must_use]
 pub fn scale(x: f64, in_min: f64, in_max: f64, out_min: f64, out_max: f64) -> f64 {
     (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 }
 
+#[must_use]
 pub fn round_precision(value: f64) -> f64 {
     ((value * 10000.0) as f64).round() / 10000.0
 }

@@ -10,6 +10,7 @@ pub struct Line {
 }
 
 impl Line {
+    #[must_use]
     pub fn new(from: Vector2, to: Vector2) -> Self {
         Self { from, to }
     }
@@ -23,6 +24,7 @@ pub struct Arc {
 }
 
 impl Arc {
+    #[must_use]
     pub fn new(from: Vector2, to: Vector2, center: Vector2) -> Self {
         Self { from, to, center }
     }
@@ -35,10 +37,12 @@ pub enum Segment {
 }
 
 impl Segment {
+    #[must_use]
     pub fn line(from: Vector2, to: Vector2) -> Self {
         Self::Line(Line::new(from, to))
     }
 
+    #[must_use]
     pub fn arc(from: Vector2, to: Vector2, center: Vector2) -> Self {
         Self::Arc(Arc::new(from, to, center))
     }
@@ -53,6 +57,7 @@ pub struct Path {
 }
 
 impl Path {
+    #[must_use]
     pub fn new(start: Vector3, segments: Vec<Segment>, end_z: f64, max_step_z: f64) -> Self {
         Self {
             start,
@@ -62,6 +67,7 @@ impl Path {
         }
     }
 
+    #[must_use]
     pub fn bounds(&self) -> Bounds {
         let mut bounds = Bounds::default();
 
@@ -105,6 +111,7 @@ impl Path {
         bounds
     }
 
+    #[must_use]
     pub fn to_instructions(&self, context: Context) -> Vec<Instruction> {
         let mut instructions = vec![];
 

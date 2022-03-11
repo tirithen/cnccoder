@@ -17,6 +17,7 @@ pub enum Tool {
 }
 
 impl Tool {
+    #[must_use]
     pub fn cylindrical(
         units: Units,
         length: f64,
@@ -35,6 +36,7 @@ impl Tool {
         ))
     }
 
+    #[must_use]
     pub fn ballnose(
         units: Units,
         length: f64,
@@ -53,6 +55,7 @@ impl Tool {
         ))
     }
 
+    #[must_use]
     pub fn conical(
         units: Units,
         angle: f64,
@@ -71,6 +74,7 @@ impl Tool {
         ))
     }
 
+    #[must_use]
     pub fn units(&self) -> Units {
         match self {
             Self::Cylindrical(t) => t.units,
@@ -79,6 +83,7 @@ impl Tool {
         }
     }
 
+    #[must_use]
     pub fn diameter(&self) -> f64 {
         match self {
             Self::Cylindrical(t) => t.diameter,
@@ -87,6 +92,7 @@ impl Tool {
         }
     }
 
+    #[must_use]
     pub fn radius(&self) -> f64 {
         match self {
             Self::Cylindrical(t) => t.diameter / 2.0,
@@ -95,6 +101,7 @@ impl Tool {
         }
     }
 
+    #[must_use]
     pub fn direction(&self) -> Direction {
         match self {
             Self::Cylindrical(t) => t.direction,
@@ -103,6 +110,7 @@ impl Tool {
         }
     }
 
+    #[must_use]
     pub fn spindle_speed(&self) -> f64 {
         match self {
             Self::Cylindrical(t) => t.spindle_speed,
@@ -111,6 +119,7 @@ impl Tool {
         }
     }
 
+    #[must_use]
     pub fn feed_rate(&self) -> f64 {
         match self {
             Self::Cylindrical(t) => t.feed_rate,
@@ -143,6 +152,7 @@ pub struct Cylindrical {
 }
 
 impl Cylindrical {
+    #[must_use]
     pub fn new(
         units: Units,
         length: f64,
@@ -161,6 +171,7 @@ impl Cylindrical {
         }
     }
 
+    #[must_use]
     pub fn radius(&self) -> f64 {
         self.diameter / 2.0
     }
@@ -220,6 +231,7 @@ pub struct Ballnose {
 }
 
 impl Ballnose {
+    #[must_use]
     pub fn new(
         units: Units,
         length: f64,
@@ -238,6 +250,7 @@ impl Ballnose {
         }
     }
 
+    #[must_use]
     pub fn radius(&self) -> f64 {
         self.diameter / 2.0
     }
@@ -298,6 +311,7 @@ pub struct Conical {
 }
 
 impl Conical {
+    #[must_use]
     pub fn new(
         units: Units,
         angle: f64,
@@ -317,6 +331,7 @@ impl Conical {
         }
     }
 
+    #[must_use]
     pub fn radius(&self) -> f64 {
         self.diameter / 2.0
     }

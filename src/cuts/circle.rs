@@ -12,6 +12,7 @@ pub struct Circle {
 }
 
 impl Circle {
+    #[must_use]
     pub fn new(start: Vector3, end_z: f64, radius: f64, max_step_z: f64) -> Self {
         Self {
             start,
@@ -21,6 +22,7 @@ impl Circle {
         }
     }
 
+    #[must_use]
     pub fn hole(start: Vector3, end_z: f64) -> Self {
         Self {
             start,
@@ -30,6 +32,7 @@ impl Circle {
         }
     }
 
+    #[must_use]
     pub fn bounds(&self) -> Bounds {
         Bounds {
             min: Vector3::new(self.start.x - self.radius, self.start.y - self.radius, self.end_z),
@@ -37,6 +40,7 @@ impl Circle {
         }
     }
 
+    #[must_use]
     pub fn to_instructions(&self, context: Context) -> Vec<Instruction> {
         let mut instructions = vec![];
 

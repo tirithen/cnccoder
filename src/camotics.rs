@@ -45,6 +45,7 @@ pub struct CamoticsTool {
 }
 
 impl CamoticsTool {
+    #[must_use]
     pub fn from_tool(tool: Tool, number: u32) -> Self {
         match tool {
             Tool::Cylindrical(t) => CamoticsTool {
@@ -89,6 +90,7 @@ pub struct Camotics {
 }
 
 impl Camotics {
+    #[must_use]
     pub fn new(name: &str, tools: Vec<Tool>, workpiece: Bounds) -> Self {
         let mut tools_map = HashMap::new();
 
@@ -112,12 +114,14 @@ impl Camotics {
         }
     }
 
+    #[must_use]
     pub fn from_program(name: &str, program: Program) -> Self {
         let tools = program.tools();
         let workpiece = program.bounds();
         Self::new(name, tools, workpiece)
     }
 
+    #[must_use]
     pub fn to_json_string(&self) -> String {
         serde_json::to_string_pretty(&self).unwrap()
     }
