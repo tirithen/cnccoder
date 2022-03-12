@@ -210,8 +210,8 @@ pub struct Bounds {
 impl Default for Bounds {
     fn default() -> Self {
         Self {
-            min: Vector3::max(),
-            max: Vector3::min(),
+            min: Vector3::default(),
+            max: Vector3::default(),
         }
     }
 }
@@ -222,6 +222,14 @@ impl Bounds {
         Self {
             min: Vector3::new(0.0, 0.0, 0.0),
             max: Vector3::new(x, y, z),
+        }
+    }
+
+    #[must_use]
+    pub fn minmax() -> Self {
+        Self {
+            min: Vector3::max(),
+            max: Vector3::min(),
         }
     }
 

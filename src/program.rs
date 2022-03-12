@@ -11,18 +11,27 @@ use crate::types::*;
 #[derive(Debug, Clone)]
 pub enum Operation {
     Cut(Cut),
+    Empty(Empty),
+    Comment(Comment),
+    Message(Message),
 }
 
 impl Operation {
     pub fn bounds(&self) -> Bounds {
         match self {
             Self::Cut(o) => o.bounds(),
+            Self::Empty(_) => Bounds::default(),
+            Self::Comment(_) => Bounds::default(),
+            Self::Message(_) => Bounds::default(),
         }
     }
 
     pub fn to_instructions(&self, context: Context) -> Vec<Instruction> {
         match self {
             Self::Cut(o) => o.to_instructions(context),
+            Self::Empty(_) => vec![Instruction::Empty(Empty {})],
+            Self::Comment(i) => vec![Instruction::Comment(i.clone())],
+            Self::Message(i) => vec![Instruction::Message(i.clone())],
         }
     }
 }
@@ -68,7 +77,7 @@ impl Context {
     }
 
     pub fn bounds(&self) -> Bounds {
-        let mut bounds = Bounds::default();
+        let mut bounds = Bounds::minmax();
 
         for operation in self.operations.iter() {
             let operation_bounds = operation.bounds();
@@ -158,7 +167,6 @@ impl Program {
         None
     }
 
-    #[must_use]
     pub fn set_tool_ordering(&self, tool: Tool, ordering: u32) {
         let mut tool_ordering = self.tool_ordering.lock().unwrap();
 
@@ -217,7 +225,7 @@ impl Program {
 
     #[must_use]
     pub fn bounds(&self) -> Bounds {
-        let mut bounds = Bounds::default();
+        let mut bounds = Bounds::minmax();
         let contexts = self.contexts.lock().unwrap();
         let tools = self.tools();
 

@@ -69,7 +69,7 @@ impl Path {
 
     #[must_use]
     pub fn bounds(&self) -> Bounds {
-        let mut bounds = Bounds::default();
+        let mut bounds = Bounds::minmax();
 
         for segment in self.segments.iter() {
             match segment {
