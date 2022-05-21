@@ -103,7 +103,7 @@ impl Camotics {
             name: name.to_string(),
             units: Units::Metric,
             resolution_mode: ResolutionMode::Manual,
-            resolution: 0.5,
+            resolution: 1.0,
             tools: tools_map,
             workpiece: Workpiece {
                 automatic: false,
@@ -129,8 +129,7 @@ impl Camotics {
 
 #[cfg(test)]
 mod tests {
-    use common_macros::hash_map;
-
+    use anyhow::Result;
     use serde_json::Value;
 
     use super::*;
@@ -214,7 +213,7 @@ mod tests {
     }
 
     #[test]
-    fn test_camotics_from_program() {
+    fn test_camotics_from_program() -> Result<()> {
         let mut program = Program::new(Units::Metric, 10.0, 50.0);
 
         let tool = Tool::cylindrical(
@@ -247,9 +246,14 @@ mod tests {
                 -0.1,
                 1.0,
             ));
-        });
+
+            Ok(())
+        })?;
 
         let camotics = Camotics::from_program("test-project", program.clone());
+
+        let mut tools = HashMap::new();
+        tools.insert(1, CamoticsTool::from_tool(tool, 1));
 
         assert_eq!(
             camotics,
@@ -258,7 +262,7 @@ mod tests {
                 units: Units::Metric,
                 resolution_mode: ResolutionMode::Manual,
                 resolution: 0.5,
-                tools: hash_map! {1 => CamoticsTool::from_tool(tool, 1)},
+                tools,
                 workpiece: Workpiece {
                     automatic: false,
                     margin: 0.0,
@@ -267,5 +271,7 @@ mod tests {
                 files: vec!["test-project.ngc".to_string()]
             }
         );
+
+        Ok(())
     }
 }

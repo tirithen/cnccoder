@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use anyhow::Result;
+
 use crate::cuts::*;
 use crate::instructions::*;
 use crate::tools::*;
@@ -197,15 +199,15 @@ impl Program {
         }
     }
 
-    pub fn extend<Action>(&mut self, tool: Tool, action: Action)
+    pub fn extend<Action>(&mut self, tool: Tool, action: Action) -> Result<()>
     where
-        Action: Fn(&mut Context),
+        Action: Fn(&mut Context) -> Result<()>,
     {
         self.create_context_if_missing_for_tool(tool);
         let mut locked_contexts = self.contexts.lock().unwrap();
         let context = locked_contexts.get_mut(&tool).unwrap();
         let locked_context = &mut context.lock().unwrap();
-        action(locked_context);
+        action(locked_context)
     }
 
     #[must_use]
@@ -355,7 +357,7 @@ mod tests {
     }
 
     #[test]
-    fn test_program_tools() {
+    fn test_program_tools() -> Result<()> {
         let mut program = Program::new(Units::Metric, 10.0, 50.0);
 
         let tool1 = Tool::cylindrical(
@@ -383,7 +385,9 @@ mod tests {
                 -0.1,
                 1.0,
             ));
-        });
+
+            Ok(())
+        })?;
 
         program.extend(tool2, |context| {
             context.append_cut(Cut::path(
@@ -395,7 +399,9 @@ mod tests {
                 -0.1,
                 1.0,
             ));
-        });
+
+            Ok(())
+        })?;
 
         let tools = program.tools();
         assert_eq!(tools, vec![tool1, tool2]);
@@ -404,10 +410,12 @@ mod tests {
 
         let tools = program.tools();
         assert_eq!(tools, vec![tool2, tool1]);
+
+        Ok(())
     }
 
     #[test]
-    fn test_program_to_instructions() {
+    fn test_program_to_instructions() -> Result<()> {
         let mut program = Program::new(Units::Metric, 10.0, 50.0);
 
         let tool1 = Tool::cylindrical(
@@ -435,7 +443,9 @@ mod tests {
                 -0.1,
                 1.0,
             ));
-        });
+
+            Ok(())
+        })?;
 
         program.extend(tool2, |context| {
             context.append_cut(Cut::path(
@@ -447,7 +457,9 @@ mod tests {
                 -0.1,
                 1.0,
             ));
-        });
+
+            Ok(())
+        })?;
 
         let instructions = program.to_instructions();
 
@@ -554,10 +566,12 @@ mod tests {
         ];
 
         assert_eq!(instructions, expected_output);
+
+        Ok(())
     }
 
     #[test]
-    fn test_program_to_gcode() {
+    fn test_program_to_gcode() -> Result<()> {
         let mut program = Program::new(Units::Imperial, 10.0, 50.0);
 
         let tool1 = Tool::cylindrical(
@@ -585,7 +599,9 @@ mod tests {
                 -0.1,
                 1.0,
             ));
-        });
+
+            Ok(())
+        })?;
 
         program.extend(tool2, |context| {
             context.append_cut(Cut::path(
@@ -597,7 +613,9 @@ mod tests {
                 -0.1,
                 1.0,
             ));
-        });
+
+            Ok(())
+        })?;
 
         program.set_tool_ordering(tool2, 1);
 
@@ -652,10 +670,12 @@ mod tests {
         ].join("\n");
 
         assert_eq!(gcode, expected_output);
+
+        Ok(())
     }
 
     #[test]
-    fn test_program_bounds() {
+    fn test_program_bounds() -> Result<()> {
         let mut program = Program::new(Units::Metric, 10.0, 50.0);
 
         let tool = Tool::cylindrical(
@@ -688,7 +708,9 @@ mod tests {
                 -0.1,
                 1.0,
             ));
-        });
+
+            Ok(())
+        })?;
 
         let bounds = program.bounds();
 
@@ -699,5 +721,7 @@ mod tests {
                 max: Vector3::new(67.0, 102.0, 3.0),
             }
         );
+
+        Ok(())
     }
 }
