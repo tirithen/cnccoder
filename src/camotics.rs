@@ -261,7 +261,7 @@ mod tests {
                 name: "test-project".to_string(),
                 units: Units::Metric,
                 resolution_mode: ResolutionMode::Manual,
-                resolution: 0.5,
+                resolution: 1.0,
                 tools,
                 workpiece: Workpiece {
                     automatic: false,
