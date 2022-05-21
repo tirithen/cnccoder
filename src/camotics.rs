@@ -110,7 +110,7 @@ impl Camotics {
                 margin: 0.0,
                 bounds: workpiece,
             },
-            files: vec![format!("{}.ngc", name)],
+            files: vec![format!("{}.gcode", name)],
         }
     }
 
@@ -173,7 +173,7 @@ mod tests {
                     },
                 },
             },
-            files: vec!["file.ngc".to_string()],
+            files: vec!["file.gcode".to_string()],
         };
 
         let serialized = serde_json::to_string(&camotics).unwrap();
@@ -203,7 +203,7 @@ mod tests {
                     }
                 },
                 "files": [
-                    "file.ngc"
+                    "file.gcode"
                 ]
             }"#,
         )
@@ -268,7 +268,7 @@ mod tests {
                     margin: 0.0,
                     bounds: program.bounds()
                 },
-                files: vec!["test-project.ngc".to_string()]
+                files: vec!["test-project.gcode".to_string()]
             }
         );
 

@@ -12,7 +12,7 @@ pub fn write_project(name: &str, program: Program) -> Result<()> {
     camotics_file.write_all(camotics.to_json_string().as_bytes())?;
     camotics_file.sync_all()?;
 
-    let mut gcode_file = File::create(format!("{}.ngc", name))?;
+    let mut gcode_file = File::create(format!("{}.gcode", name))?;
     gcode_file.write_all(gcode.as_bytes())?;
     gcode_file.sync_all()?;
 
@@ -103,17 +103,17 @@ mod tests {
                 }
             },
             "files": [
-                "test-temp.ngc"
+                "test-temp.gcode"
             ]
         }"#,
         )?;
 
         assert_eq!(camotics, expected_camotics_output);
 
-        let gcode = read_to_string("test-temp.ngc".to_string())?;
-        remove_file("test-temp.ngc")?;
+        let gcode = read_to_string("test-temp.gcode".to_string())?;
+        remove_file("test-temp.gcode")?;
 
-        assert_eq!(gcode, r#"(Tool change: Cylindrical tool: diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)
+        assert_eq!(gcode, r#"(Tool change: Cylindrical tool diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)
 G21
 G0 Z50
 M5

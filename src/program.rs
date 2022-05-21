@@ -464,7 +464,7 @@ mod tests {
         let instructions = program.to_instructions();
 
         let expected_output = vec![
-            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool: diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min".to_string() }),
+            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
@@ -486,7 +486,7 @@ mod tests {
             Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(-0.1), f: None }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::Empty(Empty {}),
-            Instruction::Comment(Comment { text: "Tool change: Conical: angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min".to_string() }),
+            Instruction::Comment(Comment { text: "Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
@@ -518,7 +518,7 @@ mod tests {
         let instructions = program.to_instructions();
 
         let expected_output = vec![
-            Instruction::Comment(Comment { text: "Tool change: Conical: angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min".to_string() }),
+            Instruction::Comment(Comment { text: "Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
@@ -540,7 +540,7 @@ mod tests {
             Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(-0.1), f: None }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::Empty(Empty {}),
-            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool: diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min".to_string() }),
+            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
@@ -622,7 +622,7 @@ mod tests {
         let gcode = program.to_gcode();
 
         let expected_output = vec![
-            "(Tool change: Conical: angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min)".to_string(),
+            "(Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min)".to_string(),
             "G20".to_string(),
             "G0 Z50".to_string(),
             "M5".to_string(),
@@ -644,7 +644,7 @@ mod tests {
             "G1 X20 Y20 Z-0.1".to_string(),
             "G0 Z10".to_string(),
             "".to_string(),
-            "(Tool change: Cylindrical tool: diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)".to_string(),
+            "(Tool change: Cylindrical tool diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)".to_string(),
             "G20".to_string(),
             "G0 Z50".to_string(),
             "M5".to_string(),
