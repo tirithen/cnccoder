@@ -1,3 +1,5 @@
+use anyhow::Result;
+
 use crate::instructions::*;
 use crate::program::*;
 use crate::types::*;
@@ -24,13 +26,19 @@ pub enum Cut {
 
 impl Cut {
     #[must_use]
-    pub fn circle(start: Vector3, end_z: f64, radius: f64, max_step_z: f64) -> Self {
-        Self::Circle(Circle::new(start, end_z, radius, max_step_z))
+    pub fn circle(
+        start: Vector3,
+        end_z: f64,
+        radius: f64,
+        max_step_z: f64,
+        compensation: ToolPathCompensation,
+    ) -> Self {
+        Self::Circle(Circle::new(start, end_z, radius, max_step_z, compensation))
     }
 
     #[must_use]
-    pub fn hole(start: Vector3, end_z: f64) -> Self {
-        Self::Circle(Circle::hole(start, end_z))
+    pub fn drill(start: Vector3, end_z: f64) -> Self {
+        Self::Circle(Circle::drill(start, end_z))
     }
 
     #[must_use]
@@ -49,8 +57,16 @@ impl Cut {
     }
 
     #[must_use]
-    pub fn plane_with_slope(start: Vector3, size: Vector2, end_z: f64, end_z_stop: f64, max_step_z: f64) -> Self {
-        Self::Plane(Plane::new_with_slope(start, size, end_z, end_z_stop, max_step_z))
+    pub fn plane_with_slope(
+        start: Vector3,
+        size: Vector2,
+        end_z: f64,
+        end_z_stop: f64,
+        max_step_z: f64,
+    ) -> Self {
+        Self::Plane(Plane::new_with_slope(
+            start, size, end_z, end_z_stop, max_step_z,
+        ))
     }
 
     #[must_use]
@@ -64,7 +80,7 @@ impl Cut {
     }
 
     #[must_use]
-    pub fn to_instructions(&self, context: Context) -> Vec<Instruction> {
+    pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         match self {
             Self::Circle(c) => c.to_instructions(context),
             Self::Frame(c) => c.to_instructions(context),

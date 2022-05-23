@@ -28,12 +28,12 @@ impl Operation {
         }
     }
 
-    pub fn to_instructions(&self, context: Context) -> Vec<Instruction> {
+    pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         match self {
             Self::Cut(o) => o.to_instructions(context),
-            Self::Empty(_) => vec![Instruction::Empty(Empty {})],
-            Self::Comment(i) => vec![Instruction::Comment(i.clone())],
-            Self::Message(i) => vec![Instruction::Message(i.clone())],
+            Self::Empty(_) => Ok(vec![Instruction::Empty(Empty {})]),
+            Self::Comment(i) => Ok(vec![Instruction::Comment(i.clone())]),
+            Self::Message(i) => Ok(vec![Instruction::Message(i.clone())]),
         }
     }
 }
@@ -118,14 +118,14 @@ impl Context {
         bounds
     }
 
-    pub fn to_instructions(&self) -> Vec<Instruction> {
+    pub fn to_instructions(&self) -> Result<Vec<Instruction>> {
         let mut instructions = vec![];
 
         for operation in &self.operations {
-            instructions.append(&mut operation.to_instructions((*self).clone()));
+            instructions.append(&mut operation.to_instructions((*self).clone())?);
         }
 
-        instructions
+        Ok(instructions)
     }
 }
 
@@ -271,7 +271,7 @@ impl Program {
     }
 
     #[must_use]
-    pub fn to_instructions(&self) -> Vec<Instruction> {
+    pub fn to_instructions(&self) -> Result<Vec<Instruction>> {
         let contexts = self.contexts.lock().unwrap();
         let tools = self.tools();
 
@@ -313,7 +313,7 @@ impl Program {
                 ]);
 
                 // Add tool instructions
-                raw_instructions.append(&mut locked_context.to_instructions());
+                raw_instructions.append(&mut locked_context.to_instructions()?);
             }
         }
 
@@ -332,16 +332,17 @@ impl Program {
             instructions.push(instruction.clone());
         }
 
-        instructions
+        Ok(instructions)
     }
 
     #[must_use]
-    pub fn to_gcode(&self) -> String {
-        self.to_instructions()
+    pub fn to_gcode(&self) -> Result<String> {
+        Ok(self
+            .to_instructions()?
             .iter()
             .map(|instruction| instruction.to_gcode())
             .collect::<Vec<String>>()
-            .join("\n")
+            .join("\n"))
     }
 }
 
@@ -461,10 +462,10 @@ mod tests {
             Ok(())
         })?;
 
-        let instructions = program.to_instructions();
+        let instructions = program.to_instructions()?;
 
         let expected_output = vec![
-            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min".to_string() }),
+            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400 mm/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
@@ -515,7 +516,7 @@ mod tests {
 
         program.set_tool_ordering(tool2, 1);
 
-        let instructions = program.to_instructions();
+        let instructions = program.to_instructions()?;
 
         let expected_output = vec![
             Instruction::Comment(Comment { text: "Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min".to_string() }),
@@ -540,7 +541,7 @@ mod tests {
             Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(-0.1), f: None }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::Empty(Empty {}),
-            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min".to_string() }),
+            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400 mm/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
@@ -619,7 +620,7 @@ mod tests {
 
         program.set_tool_ordering(tool2, 1);
 
-        let gcode = program.to_gcode();
+        let gcode = program.to_gcode()?;
 
         let expected_output = vec![
             "(Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min)".to_string(),
@@ -644,7 +645,7 @@ mod tests {
             "G1 X20 Y20 Z-0.1".to_string(),
             "G0 Z10".to_string(),
             "".to_string(),
-            "(Tool change: Cylindrical tool diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)".to_string(),
+            "(Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400 mm/min)".to_string(),
             "G20".to_string(),
             "G0 Z50".to_string(),
             "M5".to_string(),

@@ -1,3 +1,5 @@
+use anyhow::{anyhow, Result};
+
 use crate::instructions::*;
 use crate::program::*;
 use crate::types::*;
@@ -26,13 +28,27 @@ impl Frame {
     pub fn bounds(&self) -> Bounds {
         Bounds {
             min: Vector3::new(self.start.x, self.start.y, self.end_z),
-            max: Vector3::new(self.start.x + self.size.x, self.start.y + self.size.y, self.start.z),
+            max: Vector3::new(
+                self.start.x + self.size.x,
+                self.start.y + self.size.y,
+                self.start.z,
+            ),
         }
     }
 
     #[must_use]
-    pub fn to_instructions(&self, context: Context) -> Vec<Instruction> {
+    pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let tool_radius = context.tool().radius();
+        let tool_diameter = context.tool().diameter();
+
+        if self.size.x < tool_diameter {
+            return Err(anyhow!("Unable to cut frame, tool is {} mm to wider than x dimension (tool diameter is {} mm)", tool_diameter - self.size.x, tool_diameter));
+        }
+
+        if self.size.y < tool_diameter {
+            return Err(anyhow!("Unable to cut frame, tool is {} mm to wider than y dimension (tool diameter is {} mm)", tool_diameter - self.size.y, tool_diameter));
+        }
+
         let mut instructions = Vec::new();
 
         instructions.append(&mut vec![
@@ -70,11 +86,7 @@ impl Frame {
 
         for _layer in 1..=layers {
             end_z -= max_step_z;
-            instructions.append(&mut self.generate_layer_instructions(
-                start_z,
-                end_z,
-                tool_radius,
-            ));
+            instructions.append(&mut self.generate_layer_instructions(start_z, end_z, tool_radius));
             start_z = end_z;
         }
 
@@ -103,7 +115,7 @@ impl Frame {
             z: None,
         }));
 
-        instructions
+        Ok(instructions)
     }
 
     fn generate_layer_instructions(

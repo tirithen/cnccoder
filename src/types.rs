@@ -295,6 +295,33 @@ impl Default for Direction {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum ToolPathCompensation {
+    None,
+    Inner,
+    Outer,
+}
+
+impl fmt::Display for ToolPathCompensation {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            formatter,
+            "{}",
+            match self {
+                ToolPathCompensation::None => "none",
+                ToolPathCompensation::Inner => "inner",
+                ToolPathCompensation::Outer => "outer",
+            }
+        )
+    }
+}
+
+impl Default for ToolPathCompensation {
+    fn default() -> Self {
+        ToolPathCompensation::None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,3 +1,5 @@
+use anyhow::{anyhow, Result};
+
 use crate::instructions::*;
 use crate::program::*;
 use crate::types::*;
@@ -9,42 +11,65 @@ pub struct Circle {
     pub end_z: f64,
     pub radius: f64,
     pub max_step_z: f64,
+    pub compensation: ToolPathCompensation,
 }
 
 impl Circle {
     #[must_use]
-    pub fn new(start: Vector3, end_z: f64, radius: f64, max_step_z: f64) -> Self {
+    pub fn new(
+        start: Vector3,
+        end_z: f64,
+        radius: f64,
+        max_step_z: f64,
+        compensation: ToolPathCompensation,
+    ) -> Self {
         Self {
             start,
             end_z,
             radius,
             max_step_z,
+            compensation,
         }
     }
 
     #[must_use]
-    pub fn hole(start: Vector3, end_z: f64) -> Self {
+    pub fn drill(start: Vector3, end_z: f64) -> Self {
         Self {
             start,
             end_z,
             radius: 0.0,
             max_step_z: 0.0,
+            compensation: ToolPathCompensation::None,
         }
     }
 
     #[must_use]
     pub fn bounds(&self) -> Bounds {
         Bounds {
-            min: Vector3::new(self.start.x - self.radius, self.start.y - self.radius, self.end_z),
-            max: Vector3::new(self.start.x + self.radius, self.start.y + self.radius, self.start.z),
+            min: Vector3::new(
+                self.start.x - self.radius,
+                self.start.y - self.radius,
+                self.end_z,
+            ),
+            max: Vector3::new(
+                self.start.x + self.radius,
+                self.start.y + self.radius,
+                self.start.z,
+            ),
         }
     }
 
     #[must_use]
-    pub fn to_instructions(&self, context: Context) -> Vec<Instruction> {
+    pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let mut instructions = vec![];
 
-        if self.radius < 0.001 {
+        let cut_radius = match self.compensation {
+            ToolPathCompensation::None => self.radius,
+            ToolPathCompensation::Inner => self.radius - context.tool().radius(),
+            ToolPathCompensation::Outer => self.radius + context.tool().radius(),
+        };
+
+        if cut_radius >= 0.0 && cut_radius < 0.001 {
             instructions.append(&mut vec![
                 Instruction::Empty(Empty {}),
                 Instruction::Comment(Comment {
@@ -76,7 +101,7 @@ impl Circle {
                     z: Some(context.z_safe()),
                 }),
             ])
-        } else if self.radius >= 0.0 {
+        } else if cut_radius > 0.0 {
             instructions.append(&mut vec![
                 Instruction::Empty(Empty {}),
                 Instruction::Comment(Comment {
@@ -92,7 +117,7 @@ impl Circle {
                     z: Some(context.z_safe()),
                 }),
                 Instruction::G0(G0 {
-                    x: Some(self.start.x - self.radius),
+                    x: Some(self.start.x - cut_radius),
                     y: Some(self.start.y),
                     z: None,
                 }),
@@ -112,10 +137,10 @@ impl Circle {
             // Cut spiraling down in steps
             for index in 0..layers {
                 instructions.push(Instruction::G2(G2 {
-                    x: Some(self.start.x - self.radius),
+                    x: Some(self.start.x - cut_radius),
                     y: None,
                     z: Some((self.start.z - index as f64 * max_step_z).max(self.end_z)),
-                    i: Some(self.radius),
+                    i: Some(cut_radius),
                     j: None,
                     k: None,
                     r: None,
@@ -126,10 +151,10 @@ impl Circle {
 
             // Extra flat circle
             instructions.push(Instruction::G2(G2 {
-                x: Some(self.start.x - self.radius),
+                x: Some(self.start.x - cut_radius),
                 y: None,
                 z: Some(self.end_z),
-                i: Some(self.radius),
+                i: Some(cut_radius),
                 j: None,
                 k: None,
                 r: None,
@@ -138,10 +163,10 @@ impl Circle {
             }));
 
             instructions.push(Instruction::G2(G2 {
-                x: Some(self.start.x - self.radius),
+                x: Some(self.start.x - cut_radius),
                 y: None,
                 z: Some(self.end_z),
-                i: Some(self.radius - 0.001),
+                i: Some(cut_radius - 0.001),
                 j: None,
                 k: None,
                 r: None,
@@ -155,9 +180,13 @@ impl Circle {
                 z: Some(context.z_safe()),
             }));
         } else {
-            panic!("Unable to make circle, tool is to wide");
+            return Err(anyhow!(
+                "Unable to cut circle, tool is {} mm to wide (tool diameter is {} mm).",
+                cut_radius.abs() * 2.0,
+                context.tool().diameter()
+            ));
         }
 
-        instructions
+        Ok(instructions)
     }
 }

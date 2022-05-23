@@ -6,7 +6,7 @@ use crate::{camotics::*, program::*};
 
 pub fn write_project(name: &str, program: Program) -> Result<()> {
     let camotics = Camotics::from_program(name, program.clone());
-    let gcode = program.to_gcode();
+    let gcode = program.to_gcode()?;
 
     let mut camotics_file = File::create(format!("{}.camotics", name))?;
     camotics_file.write_all(camotics.to_json_string().as_bytes())?;

@@ -1,3 +1,5 @@
+use anyhow::Result;
+
 use crate::instructions::*;
 use crate::program::*;
 use crate::types::*;
@@ -112,11 +114,11 @@ impl Path {
     }
 
     #[must_use]
-    pub fn to_instructions(&self, context: Context) -> Vec<Instruction> {
+    pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let mut instructions = vec![];
 
         if self.segments.is_empty() {
-            return instructions;
+            return Ok(instructions);
         }
 
         let start = match &self.segments[0] {
@@ -205,7 +207,7 @@ impl Path {
             z: Some(context.z_safe()),
         }));
 
-        instructions
+        Ok(instructions)
     }
 
     fn segments_to_instructions(

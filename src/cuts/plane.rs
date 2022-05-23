@@ -1,3 +1,5 @@
+use anyhow::{anyhow, Result};
+
 use crate::instructions::*;
 use crate::program::*;
 use crate::types::*;
@@ -25,7 +27,13 @@ impl Plane {
     }
 
     #[must_use]
-    pub fn new_with_slope(start: Vector3, size: Vector2, end_z: f64, end_z_stop: f64, max_step_z: f64) -> Self {
+    pub fn new_with_slope(
+        start: Vector3,
+        size: Vector2,
+        end_z: f64,
+        end_z_stop: f64,
+        max_step_z: f64,
+    ) -> Self {
         Self {
             start,
             size,
@@ -39,13 +47,27 @@ impl Plane {
     pub fn bounds(&self) -> Bounds {
         Bounds {
             min: Vector3::new(self.start.x, self.start.y, self.end_z.min(self.end_z_stop)),
-            max: Vector3::new(self.start.x + self.size.x, self.start.y + self.size.y, self.start.z),
+            max: Vector3::new(
+                self.start.x + self.size.x,
+                self.start.y + self.size.y,
+                self.start.z,
+            ),
         }
     }
 
     #[must_use]
-    pub fn to_instructions(&self, context: Context) -> Vec<Instruction> {
+    pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let tool_radius = context.tool().radius();
+        let tool_diameter = context.tool().diameter();
+
+        if self.size.x < tool_diameter {
+            return Err(anyhow!("Unable to plane area, tool is {} mm to wider than x dimension (tool diameter is {} mm)", tool_diameter - self.size.x, tool_diameter));
+        }
+
+        if self.size.y < tool_diameter {
+            return Err(anyhow!("Unable to plane area, tool is {} mm to wider than y dimension (tool diameter is {} mm)", tool_diameter - self.size.y, tool_diameter));
+        }
+
         let mut instructions = Vec::new();
 
         instructions.append(&mut vec![
@@ -83,7 +105,11 @@ impl Plane {
         } else {
             (delta_z.abs() / max_step_z).ceil() as u32
         };
-        let start_z = if delta_z < 0.0 {self.start.z - delta_z} else {self.start.z};
+        let start_z = if delta_z < 0.0 {
+            self.start.z - delta_z
+        } else {
+            self.start.z
+        };
         let mut end_z = start_z;
         let mut end_z_stop = start_z + delta_z;
 
@@ -109,7 +135,7 @@ impl Plane {
             z: Some(context.z_safe()),
         }));
 
-        instructions
+        Ok(instructions)
     }
 
     fn generate_layer_instructions(
@@ -186,7 +212,7 @@ impl Plane {
         instructions.push(Instruction::G0(G0 {
             x: None,
             y: None,
-            z: Some(if end_at_start {end_z} else {end_z_stop} + 0.5),
+            z: Some(if end_at_start { end_z } else { end_z_stop } + 0.5),
         }));
 
         instructions.push(Instruction::G0(G0 {

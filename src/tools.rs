@@ -179,7 +179,10 @@ impl Cylindrical {
 
 impl fmt::Display for Cylindrical {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let units = self.units.to_string();
+        let units = match self.units {
+            Units::Imperial => self.units.to_string(),
+            Units::Metric => format!(" {}", self.units.to_string()),
+        };
 
         write!(
             formatter,
@@ -258,7 +261,10 @@ impl Ballnose {
 
 impl fmt::Display for Ballnose {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let units = self.units.to_string();
+        let units = match self.units {
+            Units::Imperial => self.units.to_string(),
+            Units::Metric => format!(" {}", self.units.to_string()),
+        };
 
         write!(
             formatter,
@@ -339,7 +345,10 @@ impl Conical {
 
 impl fmt::Display for Conical {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let units = self.units.to_string();
+        let units = match self.units {
+            Units::Imperial => self.units.to_string(),
+            Units::Metric => format!(" {}", self.units.to_string()),
+        };
 
         write!(
             formatter,
