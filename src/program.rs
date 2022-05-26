@@ -318,6 +318,7 @@ impl Program {
         }
 
         // End program
+        raw_instructions.push(Instruction::G0(G0 { x: None, y: None, z: Some(self.z_tool_change) }));
         raw_instructions.push(Instruction::Empty(Empty {}));
         raw_instructions.push(Instruction::M2(M2 {}));
 
