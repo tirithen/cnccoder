@@ -362,7 +362,7 @@ pub struct Comment {
 
 impl Comment {
     pub fn to_gcode(&self) -> String {
-        format!("({})", self.text)
+        format!(";({})", self.text)
     }
 }
 
