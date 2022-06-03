@@ -36,6 +36,7 @@ impl Arc {
 pub enum Segment {
     Line(Line),
     Arc(Arc),
+    Point(Vector2),
 }
 
 impl Segment {
@@ -47,6 +48,16 @@ impl Segment {
     #[must_use]
     pub fn arc(from: Vector2, to: Vector2, center: Vector2) -> Self {
         Self::Arc(Arc::new(from, to, center))
+    }
+
+    #[must_use]
+    pub fn point(point: Vector2) -> Self {
+        Self::Point(point)
+    }
+
+    #[must_use]
+    pub fn points(points: Vec<Vector2>) -> Vec<Self> {
+        points.into_iter().map(|point| Self::Point(point)).collect()
     }
 }
 
@@ -106,6 +117,37 @@ impl Path {
                     if bounds.min.z > min_z {
                         bounds.min.z = min_z;
                     }
+                },
+                Segment::Point(point) => {
+                    let max_x = self.start.x + point.x;
+                    if bounds.max.x < max_x {
+                        bounds.max.x = max_x;
+                    }
+
+                    let max_y = self.start.y + point.y;
+                    if bounds.max.y < max_y {
+                        bounds.max.y = max_y;
+                    }
+
+                    let max_z = if self.start.z > self.end_z {self.start.z} else {self.end_z};
+                    if bounds.max.z < max_z {
+                        bounds.max.z = max_z;
+                    }
+
+                    let min_x = self.start.x + point.x;
+                    if bounds.min.x > min_x {
+                        bounds.min.x = min_x;
+                    }
+
+                    let min_y = self.start.y + point.y;
+                    if bounds.min.y > min_y {
+                        bounds.min.y = min_y;
+                    }
+
+                    let min_z = if self.start.z < self.end_z {self.start.z} else {self.end_z};
+                    if bounds.min.z > min_z {
+                        bounds.min.z = min_z;
+                    }
                 }
             }
         }
@@ -130,6 +172,11 @@ impl Path {
             Segment::Line(line) => Vector3 {
                 x: line.from.x + self.start.x,
                 y: line.from.y + self.start.y,
+                z: self.start.z,
+            },
+            Segment::Point(point) => Vector3 {
+                x: point.x + self.start.x,
+                y: point.y + self.start.y,
                 z: self.start.z,
             },
         };
@@ -169,6 +216,7 @@ impl Path {
             let end = match segment {
                 Segment::Arc(arc) => arc.to,
                 Segment::Line(line) => line.to,
+                Segment::Point(point) => *point,
             };
             let distance = last_point.distance_to(end);
             distances.push(distance);
@@ -244,7 +292,7 @@ impl Path {
                         p: None,
                         f: None,
                     }));
-                }
+                },
                 Segment::Line(line) => {
                     instructions.push(Instruction::G1(G1 {
                         x: Some(self.start.x + line.from.x),
@@ -256,6 +304,14 @@ impl Path {
                     instructions.push(Instruction::G1(G1 {
                         x: Some(self.start.x + line.to.x),
                         y: Some(self.start.y + line.to.y),
+                        z: Some(to_z),
+                        f: None,
+                    }));
+                },
+                Segment::Point(point) => {
+                    instructions.push(Instruction::G1(G1 {
+                        x: Some(self.start.x + point.x),
+                        y: Some(self.start.y + point.y),
                         z: Some(to_z),
                         f: None,
                     }));
