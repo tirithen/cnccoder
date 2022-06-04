@@ -113,7 +113,7 @@ mod tests {
         let gcode = read_to_string("test-temp.gcode".to_string())?;
         remove_file("test-temp.gcode")?;
 
-        assert_eq!(gcode, r#"(Tool change: Cylindrical tool diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)
+        assert_eq!(gcode, r#";(Tool change: Cylindrical tool diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)
 G21
 G0 Z50
 M5
@@ -121,7 +121,7 @@ T1 M6
 S5000
 M3
 
-(Cut path at: x = 0, y = 0)
+;(Cut path at: x = 0, y = 0)
 G0 Z10
 G0 X0 Y0
 G1 Z3 F400
@@ -135,7 +135,7 @@ G1 X0 Y0 Z-0.1
 G1 X-28 Y-30 Z-0.1
 G0 Z10
 
-(Cut path at: x = 0, y = 0)
+;(Cut path at: x = 0, y = 0)
 G0 Z10
 G0 X23 Y12
 G1 Z3 F400

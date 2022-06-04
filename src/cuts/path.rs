@@ -292,7 +292,7 @@ impl Path {
                         p: None,
                         f: None,
                     }));
-                },
+                }
                 Segment::Line(line) => {
                     instructions.push(Instruction::G1(G1 {
                         x: Some(self.start.x + line.from.x),
@@ -307,7 +307,7 @@ impl Path {
                         z: Some(to_z),
                         f: None,
                     }));
-                },
+                }
                 Segment::Point(point) => {
                     instructions.push(Instruction::G1(G1 {
                         x: Some(self.start.x + point.x),
