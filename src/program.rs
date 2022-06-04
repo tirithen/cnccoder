@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use crate::cuts::*;
 use crate::instructions::*;
@@ -56,6 +56,25 @@ impl Context {
             z_tool_change,
             operations: vec![],
         }
+    }
+
+    pub fn merge(&mut self, context: Context) -> Result<()> {
+        if self.units != context.units {
+            return Err(anyhow!("Failed to merge due to mismatching units"));
+        }
+
+        if self.tool != context.tool {
+            return Err(anyhow!("Failed to merge due to mismatching tools"));
+        }
+
+        self.z_safe = context.z_safe;
+        self.z_tool_change = context.z_tool_change;
+
+        for operation in context.operations {
+            self.operations.push(operation);
+        }
+
+        Ok(())
     }
 
     pub fn append(&mut self, operation: Operation) {
@@ -210,6 +229,30 @@ impl Program {
         action(locked_context)
     }
 
+    pub fn merge(&mut self, program: Program) -> Result<()> {
+        if self.units != program.units {
+            return Err(anyhow!("Failed to merge due to mismatching units"));
+        }
+
+        self.z_safe = self.z_safe.min(program.z_safe);
+        self.z_tool_change = self.z_tool_change.min(program.z_tool_change);
+
+        for tool in program.tools() {
+            self.create_context_if_missing_for_tool(tool);
+        }
+
+        let program_contexts = program.contexts.lock().unwrap();
+        let mut contexts = self.contexts.lock().unwrap();
+
+        for tool in program.tools() {
+            let program_context = program_contexts.get(&tool).unwrap().lock().unwrap();
+            let context = &mut contexts.get_mut(&tool).unwrap().lock().unwrap();
+            context.merge(program_context.clone())?;
+        }
+
+        Ok(())
+    }
+
     #[must_use]
     pub fn tools(&self) -> Vec<Tool> {
         let mut tools = vec![];
@@ -318,7 +361,11 @@ impl Program {
         }
 
         // End program
-        raw_instructions.push(Instruction::G0(G0 { x: None, y: None, z: Some(self.z_tool_change) }));
+        raw_instructions.push(Instruction::G0(G0 {
+            x: None,
+            y: None,
+            z: Some(self.z_tool_change),
+        }));
         raw_instructions.push(Instruction::Empty(Empty {}));
         raw_instructions.push(Instruction::M2(M2 {}));
 
@@ -509,6 +556,7 @@ mod tests {
             Instruction::G1(G1 { x: Some(10.0), y: Some(20.0), z: Some(-0.1), f: None }),
             Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(-0.1), f: None }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::Empty(Empty {}),
             Instruction::M2(M2 {}),
         ];
@@ -563,6 +611,139 @@ mod tests {
             Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(-0.1), f: None }),
             Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(-0.1), f: None }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
+            Instruction::Empty(Empty {}),
+            Instruction::M2(M2 {}),
+        ];
+
+        assert_eq!(instructions, expected_output);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_merge_programs() -> Result<()> {
+        let tool1 = Tool::cylindrical(
+            Units::Metric,
+            50.0,
+            4.0,
+            Direction::Clockwise,
+            5000.0,
+            400.0,
+        );
+
+        let tool2 = Tool::conical(
+            Units::Imperial,
+            45.0,
+            1.0,
+            Direction::Clockwise,
+            5000.0,
+            400.0,
+        );
+
+        let mut program1 = Program::new(Units::Metric, 10.0, 40.0);
+
+        program1.extend(tool1, |context| {
+            context.append_cut(Cut::path(
+                Vector3::new(0.0, 0.0, 3.0),
+                vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
+                -0.1,
+                1.0,
+            ));
+
+            Ok(())
+        })?;
+
+        let mut program2 = Program::new(Units::Metric, 5.0, 50.0);
+
+        program2.extend(tool1, |context| {
+            context.append_cut(Cut::path(
+                Vector3::new(10.0, 10.0, 3.0),
+                vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
+                -0.1,
+                1.0,
+            ));
+
+            Ok(())
+        })?;
+
+        program2.extend(tool2, |context| {
+            context.append_cut(Cut::path(
+                Vector3::new(5.0, 10.0, 3.0),
+                vec![Segment::line(
+                    Vector2::new(5.0, 10.0),
+                    Vector2::new(15.0, 10.0),
+                )],
+                -0.1,
+                1.0,
+            ));
+
+            Ok(())
+        })?;
+
+        program1.merge(program2)?;
+
+        let instructions = program1.to_instructions()?;
+
+        let expected_output = vec![
+            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400 mm/min".to_string() }),
+            Instruction::G21(G21 {}),
+            Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
+            Instruction::M5(M5 {}),
+            Instruction::M6(M6 { t: 1 }),
+            Instruction::S(S { x: 5000.0 }),
+            Instruction::M3(M3 {}),
+            Instruction::Empty(Empty {}),
+            Instruction::Comment(Comment { text: "Cut path at: x = 0, y = 0".to_string() }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(5.0) }),
+            Instruction::G0(G0 { x: Some(0.0), y: Some(0.0), z: None }),
+            Instruction::G1(G1 { x: None, y: None, z: Some(3.0), f: Some(400.0) }),
+            Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(3.0), f: None }),
+            Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(2.0), f: None }),
+            Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(2.0), f: None }),
+            Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(1.0), f: None }),
+            Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(1.0), f: None }),
+            Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(0.0), f: None }),
+            Instruction::G1(G1 { x: Some(0.0), y: Some(0.0), z: Some(-0.1), f: None }),
+            Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(-0.1), f: None }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(5.0) }),
+            Instruction::Empty(Empty {}),
+            Instruction::Comment(Comment { text: "Cut path at: x = 10, y = 10".to_string() }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(5.0) }),
+            Instruction::G0(G0 { x: Some(10.0), y: Some(10.0), z: None }),
+            Instruction::G1(G1 { x: None, y: None, z: Some(3.0), f: Some(400.0) }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(10.0), z: Some(3.0), f: None }),
+            Instruction::G1(G1 { x: Some(15.0), y: Some(20.0), z: Some(2.0), f: None }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(10.0), z: Some(2.0), f: None }),
+            Instruction::G1(G1 { x: Some(15.0), y: Some(20.0), z: Some(1.0), f: None }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(10.0), z: Some(1.0), f: None }),
+            Instruction::G1(G1 { x: Some(15.0), y: Some(20.0), z: Some(0.0), f: None }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(10.0), z: Some(-0.1), f: None }),
+            Instruction::G1(G1 { x: Some(15.0), y: Some(20.0), z: Some(-0.1), f: None }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(5.0) }),
+            Instruction::Empty(Empty {}),
+            Instruction::Comment(Comment { text: "Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min".to_string() }),
+            Instruction::G21(G21 {}),
+            Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
+            Instruction::M5(M5 {}),
+            Instruction::M6(M6 { t: 2 }),
+            Instruction::S(S { x: 5000.0 }),
+            Instruction::M3(M3 {}),
+            Instruction::Empty(Empty {}),
+            Instruction::Comment(Comment { text: "Cut path at: x = 5, y = 10".to_string() }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(5.0) }),
+            Instruction::G0(G0 { x: Some(10.0), y: Some(20.0), z: None }),
+            Instruction::G1(G1 { x: None, y: None, z: Some(3.0), f: Some(400.0) }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(20.0), z: Some(3.0), f: None }),
+            Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(2.0), f: None }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(20.0), z: Some(2.0), f: None }),
+            Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(1.0), f: None }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(20.0), z: Some(1.0), f: None }),
+            Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(0.0), f: None }),
+            Instruction::G1(G1 { x: Some(10.0), y: Some(20.0), z: Some(-0.1), f: None }),
+            Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(-0.1), f: None }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(5.0) }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(40.0) }),
             Instruction::Empty(Empty {}),
             Instruction::M2(M2 {}),
         ];
@@ -624,7 +805,7 @@ mod tests {
         let gcode = program.to_gcode()?;
 
         let expected_output = vec![
-            "(Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min)".to_string(),
+            ";(Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min)".to_string(),
             "G20".to_string(),
             "G0 Z50".to_string(),
             "M5".to_string(),
@@ -632,7 +813,7 @@ mod tests {
             "S5000".to_string(),
             "M3".to_string(),
             "".to_string(),
-            "(Cut path at: x = 5, y = 10)".to_string(),
+            ";(Cut path at: x = 5, y = 10)".to_string(),
             "G0 Z10".to_string(),
             "G0 X10 Y20".to_string(),
             "G1 Z3 F400".to_string(),
@@ -646,7 +827,7 @@ mod tests {
             "G1 X20 Y20 Z-0.1".to_string(),
             "G0 Z10".to_string(),
             "".to_string(),
-            "(Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400 mm/min)".to_string(),
+            ";(Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400 mm/min)".to_string(),
             "G20".to_string(),
             "G0 Z50".to_string(),
             "M5".to_string(),
@@ -654,7 +835,7 @@ mod tests {
             "S5000".to_string(),
             "M3".to_string(),
             "".to_string(),
-            "(Cut path at: x = 0, y = 0)".to_string(),
+            ";(Cut path at: x = 0, y = 0)".to_string(),
             "G0 Z10".to_string(),
             "G0 X0 Y0".to_string(),
             "G1 Z3 F400".to_string(),
@@ -667,6 +848,7 @@ mod tests {
             "G1 X0 Y0 Z-0.1".to_string(),
             "G1 X5 Y10 Z-0.1".to_string(),
             "G0 Z10".to_string(),
+            "G0 Z50".to_string(),
             "".to_string(),
             "M2".to_string(),
         ].join("\n");
