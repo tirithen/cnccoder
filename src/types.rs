@@ -250,6 +250,33 @@ pub enum Units {
     Imperial,
 }
 
+impl Units {
+    pub fn mm_to_inch(mm: f64) -> f64 {
+        mm * 25.4
+    }
+
+    pub fn measurement_from_mm(self, value: f64) -> f64 {
+        match self {
+            Self::Metric => value,
+            Self::Imperial => Self::mm_to_inch(value),
+        }
+    }
+
+    pub fn default_z_end(self) -> f64 {
+        match self {
+            Self::Metric => 0.1,
+            Self::Imperial => Self::mm_to_inch(0.1),
+        }
+    }
+
+    pub fn default_z_max_step(self) -> f64 {
+        match self {
+            Self::Metric => 1.0,
+            Self::Imperial => Self::mm_to_inch(1.0),
+        }
+    }
+}
+
 impl fmt::Display for Units {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
