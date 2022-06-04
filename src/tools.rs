@@ -129,6 +129,12 @@ impl Tool {
     }
 }
 
+impl Default for Tool {
+    fn default() -> Self {
+        Self::Cylindrical(Cylindrical::default())
+    }
+}
+
 impl fmt::Display for Tool {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let description = match self {
@@ -174,6 +180,19 @@ impl Cylindrical {
     #[must_use]
     pub fn radius(&self) -> f64 {
         self.diameter / 2.0
+    }
+}
+
+impl Default for Cylindrical {
+    fn default() -> Self {
+        Self {
+            units: Units::Metric,
+            length: 30.0,
+            diameter: 6.0,
+            direction: Direction::Clockwise,
+            spindle_speed: 10000.0,
+            feed_rate: 500.0,
+        }
     }
 }
 
@@ -259,6 +278,19 @@ impl Ballnose {
     }
 }
 
+impl Default for Ballnose {
+    fn default() -> Self {
+        Self {
+            units: Units::Metric,
+            length: 5.0,
+            diameter: 2.0,
+            direction: Direction::Clockwise,
+            spindle_speed: 10000.0,
+            feed_rate: 500.0,
+        }
+    }
+}
+
 impl fmt::Display for Ballnose {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let units = match self.units {
@@ -340,6 +372,20 @@ impl Conical {
     #[must_use]
     pub fn radius(&self) -> f64 {
         self.diameter / 2.0
+    }
+}
+
+impl Default for Conical {
+    fn default() -> Self {
+        Self {
+            units: Units::Metric,
+            length: 8.0,
+            angle: 90.0,
+            diameter: 16.0,
+            direction: Direction::Clockwise,
+            spindle_speed: 10000.0,
+            feed_rate: 500.0,
+        }
     }
 }
 
