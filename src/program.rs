@@ -85,6 +85,10 @@ impl Context {
         self.append(Operation::Cut(cut));
     }
 
+    pub fn units(&self) -> Units {
+        self.units
+    }
+
     pub fn tool(&self) -> Tool {
         self.tool
     }
@@ -318,7 +322,7 @@ impl Program {
         let contexts = self.contexts.lock().unwrap();
         let tools = self.tools();
 
-        let mut raw_instructions = vec![];
+        let mut raw_instructions = vec![Instruction::G17(G17 {})];
 
         for tool in tools {
             if let Some(context) = contexts.get(&tool) {
@@ -370,9 +374,21 @@ impl Program {
         raw_instructions.push(Instruction::M2(M2 {}));
 
         // Trim duplicated instructions
+        let mut workplane = Instruction::Empty(Empty {});
         let raw_length = raw_instructions.len();
         let mut instructions = vec![];
         for (index, instruction) in (&raw_instructions).iter().enumerate() {
+            if *instruction == Instruction::G17(G17 {})
+                || *instruction == Instruction::G18(G18 {})
+                || *instruction == Instruction::G19(G19 {})
+            {
+                if *instruction == workplane {
+                    continue;
+                } else {
+                    workplane = instruction.clone();
+                }
+            }
+
             if index < raw_length - 1 && instruction == &raw_instructions[index + 1] {
                 continue;
             }
@@ -396,6 +412,8 @@ impl Program {
 
 #[cfg(test)]
 mod tests {
+    use crate::{Vector2, Vector3};
+
     use super::*;
 
     #[test]
@@ -513,6 +531,7 @@ mod tests {
         let instructions = program.to_instructions()?;
 
         let expected_output = vec![
+            Instruction::G17(G17 {}),
             Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400 mm/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
@@ -568,6 +587,7 @@ mod tests {
         let instructions = program.to_instructions()?;
 
         let expected_output = vec![
+            Instruction::G17(G17 {}),
             Instruction::Comment(Comment { text: "Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
@@ -686,6 +706,7 @@ mod tests {
         let instructions = program1.to_instructions()?;
 
         let expected_output = vec![
+            Instruction::G17(G17 {}),
             Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400 mm/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
@@ -805,6 +826,7 @@ mod tests {
         let gcode = program.to_gcode()?;
 
         let expected_output = vec![
+            "G17".to_string(),
             ";(Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min)".to_string(),
             "G20".to_string(),
             "G0 Z50".to_string(),

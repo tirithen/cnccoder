@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use crate::instructions::*;
 use crate::program::*;
@@ -6,12 +6,12 @@ use crate::types::*;
 use crate::utils::*;
 
 #[derive(Debug, Clone)]
-pub struct Line {
+pub struct Line2D {
     from: Vector2,
     to: Vector2,
 }
 
-impl Line {
+impl Line2D {
     #[must_use]
     pub fn new(from: Vector2, to: Vector2) -> Self {
         Self { from, to }
@@ -19,40 +19,71 @@ impl Line {
 }
 
 #[derive(Debug, Clone)]
-pub struct Arc {
+pub struct Arc2D {
     pub from: Vector2,
     pub to: Vector2,
     pub center: Vector2,
+    pub axis: Axis,
+    pub direction: Direction,
 }
 
-impl Arc {
+impl Arc2D {
     #[must_use]
-    pub fn new(from: Vector2, to: Vector2, center: Vector2) -> Self {
-        Self { from, to, center }
+    pub fn new(
+        from: Vector2,
+        to: Vector2,
+        center: Vector2,
+        axis: Axis,
+        direction: Direction,
+    ) -> Self {
+        Self {
+            from,
+            to,
+            center,
+            axis,
+            direction,
+        }
+    }
+
+    #[must_use]
+    pub fn radius(&self) -> f64 {
+        self.from
+            .distance_to(self.center)
+            .max(self.to.distance_to(self.center))
     }
 }
 
 #[derive(Debug, Clone)]
 pub enum Segment {
-    Line(Line),
-    Arc(Arc),
+    Line(Line2D),
+    Arc(Arc2D),
     Point(Vector2),
 }
 
 impl Segment {
     #[must_use]
     pub fn line(from: Vector2, to: Vector2) -> Self {
-        Self::Line(Line::new(from, to))
+        Self::Line(Line2D::new(from, to))
     }
 
     #[must_use]
-    pub fn arc(from: Vector2, to: Vector2, center: Vector2) -> Self {
-        Self::Arc(Arc::new(from, to, center))
+    pub fn arc_x(from: Vector2, to: Vector2, center: Vector2, direction: Direction) -> Self {
+        Self::Arc(Arc2D::new(from, to, center, Axis::X, direction))
     }
 
     #[must_use]
-    pub fn point(point: Vector2) -> Self {
-        Self::Point(point)
+    pub fn arc_y(from: Vector2, to: Vector2, center: Vector2, direction: Direction) -> Self {
+        Self::Arc(Arc2D::new(from, to, center, Axis::Y, direction))
+    }
+
+    #[must_use]
+    pub fn arc_z(from: Vector2, to: Vector2, center: Vector2, direction: Direction) -> Self {
+        Self::Arc(Arc2D::new(from, to, center, Axis::Z, direction))
+    }
+
+    #[must_use]
+    pub fn point(x: f64, y: f64) -> Self {
+        Self::Point(Vector2::new(x, y))
     }
 
     #[must_use]
@@ -86,38 +117,107 @@ impl Path {
 
         for segment in self.segments.iter() {
             match segment {
-                Segment::Arc(_arc) => println!("WARNING: bounding box is not calculated for Arc segments yet, ensure that dependent code has other ways of calculating relevant bounding box"),
-                Segment::Line(line) => {
-                    let max_x = self.start.x + if line.from.x > line.to.x {line.from.x} else {line.to.x};
+                // TODO: implement a more proper bounds calculation for arc sections
+                Segment::Arc(arc) => {
+                    let radius = arc.radius();
+                    let max_x = arc.center.x + radius;
+                    let min_x = arc.center.x - radius;
+                    let max_y = arc.center.y + radius;
+                    let min_y = arc.center.y - radius;
+                    let max_z = if self.start.z > self.end_z {
+                        self.start.z
+                    } else {
+                        self.end_z
+                    };
+                    let min_z = if self.start.z < self.end_z {
+                        self.start.z
+                    } else {
+                        self.end_z
+                    };
+
                     if bounds.max.x < max_x {
                         bounds.max.x = max_x;
                     }
 
-                    let max_y = self.start.y + if line.from.y > line.to.y {line.from.y} else {line.to.y};
                     if bounds.max.y < max_y {
                         bounds.max.y = max_y;
                     }
 
-                    let max_z = if self.start.z > self.end_z {self.start.z} else {self.end_z};
                     if bounds.max.z < max_z {
                         bounds.max.z = max_z;
                     }
 
-                    let min_x = self.start.x + if line.from.x < line.to.x {line.from.x} else {line.to.x};
                     if bounds.min.x > min_x {
                         bounds.min.x = min_x;
                     }
 
-                    let min_y = self.start.y + if line.from.y < line.to.y {line.from.y} else {line.to.y};
                     if bounds.min.y > min_y {
                         bounds.min.y = min_y;
                     }
 
-                    let min_z = if self.start.z < self.end_z {self.start.z} else {self.end_z};
                     if bounds.min.z > min_z {
                         bounds.min.z = min_z;
                     }
-                },
+                }
+                Segment::Line(line) => {
+                    let max_x = self.start.x
+                        + if line.from.x > line.to.x {
+                            line.from.x
+                        } else {
+                            line.to.x
+                        };
+                    if bounds.max.x < max_x {
+                        bounds.max.x = max_x;
+                    }
+
+                    let max_y = self.start.y
+                        + if line.from.y > line.to.y {
+                            line.from.y
+                        } else {
+                            line.to.y
+                        };
+                    if bounds.max.y < max_y {
+                        bounds.max.y = max_y;
+                    }
+
+                    let max_z = if self.start.z > self.end_z {
+                        self.start.z
+                    } else {
+                        self.end_z
+                    };
+                    if bounds.max.z < max_z {
+                        bounds.max.z = max_z;
+                    }
+
+                    let min_x = self.start.x
+                        + if line.from.x < line.to.x {
+                            line.from.x
+                        } else {
+                            line.to.x
+                        };
+                    if bounds.min.x > min_x {
+                        bounds.min.x = min_x;
+                    }
+
+                    let min_y = self.start.y
+                        + if line.from.y < line.to.y {
+                            line.from.y
+                        } else {
+                            line.to.y
+                        };
+                    if bounds.min.y > min_y {
+                        bounds.min.y = min_y;
+                    }
+
+                    let min_z = if self.start.z < self.end_z {
+                        self.start.z
+                    } else {
+                        self.end_z
+                    };
+                    if bounds.min.z > min_z {
+                        bounds.min.z = min_z;
+                    }
+                }
                 Segment::Point(point) => {
                     let max_x = self.start.x + point.x;
                     if bounds.max.x < max_x {
@@ -129,7 +229,11 @@ impl Path {
                         bounds.max.y = max_y;
                     }
 
-                    let max_z = if self.start.z > self.end_z {self.start.z} else {self.end_z};
+                    let max_z = if self.start.z > self.end_z {
+                        self.start.z
+                    } else {
+                        self.end_z
+                    };
                     if bounds.max.z < max_z {
                         bounds.max.z = max_z;
                     }
@@ -144,7 +248,11 @@ impl Path {
                         bounds.min.y = min_y;
                     }
 
-                    let min_z = if self.start.z < self.end_z {self.start.z} else {self.end_z};
+                    let min_z = if self.start.z < self.end_z {
+                        self.start.z
+                    } else {
+                        self.end_z
+                    };
                     if bounds.min.z > min_z {
                         bounds.min.z = min_z;
                     }
@@ -233,21 +341,23 @@ impl Path {
             let end_z = start_z - max_step_z;
 
             instructions.append(&mut self.segments_to_instructions(
+                context.units(),
                 start_z,
                 end_z,
                 &distances,
                 total_distance,
-            ));
+            )?);
 
             start_z = end_z;
         }
 
         instructions.append(&mut self.segments_to_instructions(
+            context.units(),
             self.end_z,
             self.end_z,
             &distances,
             total_distance,
-        ));
+        )?);
 
         instructions.push(Instruction::G0(G0 {
             x: None,
@@ -260,11 +370,12 @@ impl Path {
 
     fn segments_to_instructions(
         &self,
+        units: Units,
         start_z: f64,
         end_z: f64,
         distances: &[f64],
         total_distance: f64,
-    ) -> Vec<Instruction> {
+    ) -> Result<Vec<Instruction>> {
         let mut instructions = Vec::new();
         let mut from_z = start_z;
 
@@ -274,6 +385,19 @@ impl Path {
 
             match segment {
                 Segment::Arc(arc) => {
+                    let distance_from = arc.from.distance_to(arc.center);
+                    let distance_to = arc.to.distance_to(arc.center);
+
+                    if (distance_from - distance_to).abs() > 0.0001 {
+                        return Err(anyhow!(
+                            "Arc distances from/center ({} {}) and to/center ({} {}) must be equal",
+                            distance_from,
+                            units,
+                            distance_to,
+                            units,
+                        ));
+                    }
+
                     instructions.push(Instruction::G1(G1 {
                         x: Some(self.start.x + arc.from.x),
                         y: Some(self.start.y + arc.from.y),
@@ -281,17 +405,48 @@ impl Path {
                         f: None,
                     }));
 
-                    instructions.push(Instruction::G2(G2 {
-                        x: Some(self.start.x + arc.to.x),
-                        y: Some(self.start.y + arc.to.y),
-                        z: Some(to_z),
-                        i: Some(arc.center.x - arc.from.x),
-                        j: Some(arc.center.y - arc.from.y),
-                        k: None,
-                        r: None,
-                        p: None,
-                        f: None,
-                    }));
+                    match arc.axis {
+                        Axis::X => {
+                            instructions.push(Instruction::G19(G19 {}));
+                        }
+                        Axis::Y => {
+                            instructions.push(Instruction::G18(G18 {}));
+                        }
+                        Axis::Z => {
+                            instructions.push(Instruction::G17(G17 {}));
+                        }
+                    }
+
+                    match arc.direction {
+                        Direction::Clockwise => {
+                            instructions.push(Instruction::G2(G2 {
+                                x: Some(self.start.x + arc.to.x),
+                                y: Some(self.start.y + arc.to.y),
+                                z: Some(to_z),
+                                i: Some(arc.center.x - arc.from.x),
+                                j: Some(arc.center.y - arc.from.y),
+                                k: None,
+                                r: None,
+                                p: None,
+                                f: None,
+                            }));
+                        }
+                        Direction::Counterclockwise => {
+                            instructions.push(Instruction::G3(G3 {
+                                x: Some(self.start.x + arc.to.x),
+                                y: Some(self.start.y + arc.to.y),
+                                z: Some(to_z),
+                                i: Some(arc.center.x - arc.from.x),
+                                j: Some(arc.center.y - arc.from.y),
+                                k: None,
+                                r: None,
+                                p: None,
+                                f: None,
+                            }));
+                        }
+                    }
+
+                    instructions.push(Instruction::G17(G17 {}));
                 }
                 Segment::Line(line) => {
                     instructions.push(Instruction::G1(G1 {
@@ -321,6 +476,6 @@ impl Path {
             from_z = to_z;
         }
 
-        instructions
+        Ok(instructions)
     }
 }

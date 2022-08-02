@@ -221,6 +221,36 @@ impl G4 {
     }
 }
 
+/// Select Plane XY
+#[derive(Debug, Clone, PartialEq)]
+pub struct G17 {}
+
+impl G17 {
+    pub fn to_gcode(&self) -> String {
+        "G17".to_string()
+    }
+}
+
+/// Select Plane ZX
+#[derive(Debug, Clone, PartialEq)]
+pub struct G18 {}
+
+impl G18 {
+    pub fn to_gcode(&self) -> String {
+        "G18".to_string()
+    }
+}
+
+/// Select Plane YZ
+#[derive(Debug, Clone, PartialEq)]
+pub struct G19 {}
+
+impl G19 {
+    pub fn to_gcode(&self) -> String {
+        "G19".to_string()
+    }
+}
+
 /// Inch Units
 #[derive(Debug, Clone, PartialEq)]
 pub struct G20 {}
@@ -386,6 +416,9 @@ pub enum Instruction {
     G2(G2),
     G3(G3),
     G4(G4),
+    G17(G17),
+    G18(G18),
+    G19(G19),
     G20(G20),
     G21(G21),
     G43(G43),
@@ -410,6 +443,9 @@ impl Instruction {
             Instruction::G2(instruction) => instruction.to_gcode(),
             Instruction::G3(instruction) => instruction.to_gcode(),
             Instruction::G4(instruction) => instruction.to_gcode(),
+            Instruction::G17(instruction) => instruction.to_gcode(),
+            Instruction::G18(instruction) => instruction.to_gcode(),
+            Instruction::G19(instruction) => instruction.to_gcode(),
             Instruction::G20(instruction) => instruction.to_gcode(),
             Instruction::G21(instruction) => instruction.to_gcode(),
             Instruction::G43(instruction) => instruction.to_gcode(),

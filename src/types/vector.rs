@@ -1,6 +1,7 @@
 use std::{
     f64::{self, consts::PI},
     fmt,
+    ops::{Add, Div, Mul, Sub},
 };
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -108,6 +109,50 @@ impl Vector2 {
     }
 }
 
+impl Add for Vector2 {
+    type Output = Vector2;
+
+    fn add(self, rhs: Vector2) -> Vector2 {
+        Vector2 {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl Sub for Vector2 {
+    type Output = Vector2;
+
+    fn sub(self, rhs: Vector2) -> Vector2 {
+        Vector2 {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
+impl Mul for Vector2 {
+    type Output = Vector2;
+
+    fn mul(self, rhs: Vector2) -> Vector2 {
+        Vector2 {
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+        }
+    }
+}
+
+impl Div for Vector2 {
+    type Output = Vector2;
+
+    fn div(self, rhs: Vector2) -> Vector2 {
+        Vector2 {
+            x: self.x / rhs.x,
+            y: self.y / rhs.y,
+        }
+    }
+}
+
 impl fmt::Display for Vector2 {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -153,6 +198,14 @@ impl Vector3 {
     }
 
     #[must_use]
+    pub fn distance_to(&self, to: Self) -> f64 {
+        ((self.x - to.x) * (self.x - to.x)
+            + (self.y - to.y) * (self.y - to.y)
+            + (self.z - to.z) * (self.z - to.z))
+            .sqrt()
+    }
+
+    #[must_use]
     pub fn xy(&self) -> Vector2 {
         Vector2::new(self.x, self.y)
     }
@@ -189,6 +242,54 @@ impl Vector3 {
     }
 }
 
+impl Add for Vector3 {
+    type Output = Vector3;
+
+    fn add(self, rhs: Vector3) -> Vector3 {
+        Vector3 {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+            z: self.z + rhs.z,
+        }
+    }
+}
+
+impl Sub for Vector3 {
+    type Output = Vector3;
+
+    fn sub(self, rhs: Vector3) -> Vector3 {
+        Vector3 {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+            z: self.z - rhs.z,
+        }
+    }
+}
+
+impl Mul for Vector3 {
+    type Output = Vector3;
+
+    fn mul(self, rhs: Vector3) -> Vector3 {
+        Vector3 {
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+            z: self.z * rhs.z,
+        }
+    }
+}
+
+impl Div for Vector3 {
+    type Output = Vector3;
+
+    fn div(self, rhs: Vector3) -> Vector3 {
+        Vector3 {
+            x: self.x / rhs.x,
+            y: self.y / rhs.y,
+            z: self.z / rhs.z,
+        }
+    }
+}
+
 impl fmt::Display for Vector3 {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -198,154 +299,6 @@ impl fmt::Display for Vector3 {
             round_precision(self.y),
             round_precision(self.z)
         )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
-pub struct Bounds {
-    pub min: Vector3,
-    pub max: Vector3,
-}
-
-impl Default for Bounds {
-    fn default() -> Self {
-        Self {
-            min: Vector3::default(),
-            max: Vector3::default(),
-        }
-    }
-}
-
-impl Bounds {
-    #[must_use]
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
-        Self {
-            min: Vector3::new(0.0, 0.0, 0.0),
-            max: Vector3::new(x, y, z),
-        }
-    }
-
-    #[must_use]
-    pub fn minmax() -> Self {
-        Self {
-            min: Vector3::max(),
-            max: Vector3::min(),
-        }
-    }
-
-    #[must_use]
-    pub fn size(&self) -> Vector3 {
-        Vector3::new(
-            self.max.x - self.min.x,
-            self.max.y - self.min.y,
-            self.max.z - self.min.z,
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
-#[serde(rename_all = "lowercase")]
-pub enum Units {
-    Metric,
-    Imperial,
-}
-
-impl Units {
-    pub fn mm_to_inch(mm: f64) -> f64 {
-        mm * 25.4
-    }
-
-    pub fn measurement_from_mm(self, value: f64) -> f64 {
-        match self {
-            Self::Metric => value,
-            Self::Imperial => Self::mm_to_inch(value),
-        }
-    }
-
-    pub fn default_z_end(self) -> f64 {
-        match self {
-            Self::Metric => 0.1,
-            Self::Imperial => Self::mm_to_inch(0.1),
-        }
-    }
-
-    pub fn default_z_max_step(self) -> f64 {
-        match self {
-            Self::Metric => 1.0,
-            Self::Imperial => Self::mm_to_inch(1.0),
-        }
-    }
-}
-
-impl fmt::Display for Units {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            formatter,
-            "{}",
-            match self {
-                Units::Metric => "mm",
-                Units::Imperial => "\"",
-            }
-        )
-    }
-}
-
-impl Default for Units {
-    fn default() -> Self {
-        Units::Metric
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
-#[serde(rename_all = "lowercase")]
-pub enum Direction {
-    Clockwise,
-    Counterclockwise,
-}
-
-impl fmt::Display for Direction {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            formatter,
-            "{}",
-            match self {
-                Direction::Clockwise => "clockwise",
-                Direction::Counterclockwise => "counterclockwise",
-            }
-        )
-    }
-}
-
-impl Default for Direction {
-    fn default() -> Self {
-        Direction::Clockwise
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum ToolPathCompensation {
-    None,
-    Inner,
-    Outer,
-}
-
-impl fmt::Display for ToolPathCompensation {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            formatter,
-            "{}",
-            match self {
-                ToolPathCompensation::None => "none",
-                ToolPathCompensation::Inner => "inner",
-                ToolPathCompensation::Outer => "outer",
-            }
-        )
-    }
-}
-
-impl Default for ToolPathCompensation {
-    fn default() -> Self {
-        ToolPathCompensation::None
     }
 }
 

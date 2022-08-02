@@ -18,3 +18,4 @@ lto = true
 
 [features]
 filesystem = []
+simulation = []
