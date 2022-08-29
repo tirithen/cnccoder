@@ -5,29 +5,42 @@ use crate::program::*;
 use crate::types::*;
 use crate::utils::*;
 
+/// A 2D line segment used when cutting top/down paths.
 #[derive(Debug, Clone)]
 pub struct Line2D {
-    from: Vector2,
-    to: Vector2,
+    /// Relative starting point in 2D space.
+    pub from: Vector2,
+    /// Relative end point in 2D space.
+    pub to: Vector2,
 }
 
 impl Line2D {
+    /// Creates a new `Line2D` struct
     #[must_use]
     pub fn new(from: Vector2, to: Vector2) -> Self {
         Self { from, to }
     }
 }
 
+/// A 2D arc segment used when cutting top/down paths.
 #[derive(Debug, Clone)]
 pub struct Arc2D {
+    /// Relative starting point in 2D space.
     pub from: Vector2,
+    /// Relative starting point in 2D space.
     pub to: Vector2,
+    /// Relative center point in 2D space, will be used along with from and to to derive the radius.
+    /// The center must be places so that it has the same distance between center -> from,
+    /// and center -> to.
     pub center: Vector2,
+    /// The axis to cut around, when `Axis::Z` is used the cut will be top/down.
     pub axis: Axis,
+    /// The direction to cut the arc with.
     pub direction: Direction,
 }
 
 impl Arc2D {
+    /// Creates a new `Arc2D` struct
     #[must_use]
     pub fn new(
         from: Vector2,
@@ -45,6 +58,7 @@ impl Arc2D {
         }
     }
 
+    /// Returns the radius of the arc.
     #[must_use]
     pub fn radius(&self) -> f64 {
         self.from
@@ -53,54 +67,80 @@ impl Arc2D {
     }
 }
 
+/// A path segment variant used when creating a cut [Path](struct.Path.html).
+///
+/// All coordinate values for a segment is relative to the path start coordinate.
 #[derive(Debug, Clone)]
 pub enum Segment {
+    /// A 2D line segment.
     Line(Line2D),
+    /// An arc segment that when created on z axis represents a 2D top/down cut.
     Arc(Arc2D),
+    /// A point in 2D space to cut to.
     Point(Vector2),
 }
 
 impl Segment {
+    /// Helper for creating a top/down line segment.
     #[must_use]
     pub fn line(from: Vector2, to: Vector2) -> Self {
         Self::Line(Line2D::new(from, to))
     }
 
+    /// Helper for creating a top/down arc segment (alias for
+    /// [Segment::arc_z](enum.Segment.html#method.arc_z)).
+    #[must_use]
+    pub fn arc(from: Vector2, to: Vector2, center: Vector2, direction: Direction) -> Self {
+        Self::arc_z(from, to, center, direction)
+    }
+
+    /// Helper for creating an arc segment around the x axis.
     #[must_use]
     pub fn arc_x(from: Vector2, to: Vector2, center: Vector2, direction: Direction) -> Self {
         Self::Arc(Arc2D::new(from, to, center, Axis::X, direction))
     }
 
+    /// Helper for creating an arc segment around the y axis.
     #[must_use]
     pub fn arc_y(from: Vector2, to: Vector2, center: Vector2, direction: Direction) -> Self {
         Self::Arc(Arc2D::new(from, to, center, Axis::Y, direction))
     }
 
+    /// Helper for creating an arc segment around the z axis.
     #[must_use]
     pub fn arc_z(from: Vector2, to: Vector2, center: Vector2, direction: Direction) -> Self {
         Self::Arc(Arc2D::new(from, to, center, Axis::Z, direction))
     }
 
+    /// Helper for creating a 2D "waypoint" point segment.
     #[must_use]
     pub fn point(x: f64, y: f64) -> Self {
         Self::Point(Vector2::new(x, y))
     }
 
+    /// Helper for creating multiple 2D "waypoint" point segments at once.
     #[must_use]
     pub fn points(points: Vec<Vector2>) -> Vec<Self> {
         points.into_iter().map(|point| Self::Point(point)).collect()
     }
 }
 
+/// Cut a top/down path from several segments.
 #[derive(Debug, Clone)]
 pub struct Path {
-    start: Vector3,
-    segments: Vec<Segment>,
-    end_z: f64,
-    max_step_z: f64,
+    /// Start point in 3D space.
+    pub start: Vector3,
+    /// Segments that makes up the path. All coordinate values for the segments should be relative
+    /// to the path start coordinates.
+    pub segments: Vec<Segment>,
+    /// The end depth of the cut on the z axis.
+    pub end_z: f64,
+    /// The maximum depth to cut on the z axis on each pass.
+    pub max_step_z: f64,
 }
 
 impl Path {
+    /// Creates a new `Path` struct
     #[must_use]
     pub fn new(start: Vector3, segments: Vec<Segment>, end_z: f64, max_step_z: f64) -> Self {
         Self {
@@ -111,6 +151,7 @@ impl Path {
         }
     }
 
+    /// Returns the bounds of the cut.
     #[must_use]
     pub fn bounds(&self) -> Bounds {
         let mut bounds = Bounds::minmax();
@@ -263,6 +304,7 @@ impl Path {
         bounds
     }
 
+    /// Converts the struct to G-code instructions.
     #[must_use]
     pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let mut instructions = vec![];

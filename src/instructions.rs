@@ -1,3 +1,8 @@
+//! Representations of all supported G-code instructions/commands for cnccoder.
+//!
+//! This is the lowest level of structs in the crate. Even if they are publicly exposed,
+//! they are primarily intended to be used internally by the higher level [cuts](../cuts/index.html).
+
 use std::time::Duration;
 
 use crate::utils::round_precision;
@@ -14,6 +19,7 @@ pub struct G0 {
 }
 
 impl G0 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         let mut command = "G0".to_string();
 
@@ -47,6 +53,7 @@ pub struct G1 {
 }
 
 impl G1 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         let mut command = "G1".to_string();
 
@@ -96,6 +103,7 @@ pub struct G2 {
 }
 
 impl G2 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         let mut command = "G2".to_string();
 
@@ -165,6 +173,7 @@ pub struct G3 {
 }
 
 impl G3 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         let mut command = "G3".to_string();
 
@@ -216,6 +225,7 @@ pub struct G4 {
 }
 
 impl G4 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         format!("G4 P{}", round_precision(self.p.as_secs_f64()))
     }
@@ -226,6 +236,7 @@ impl G4 {
 pub struct G17 {}
 
 impl G17 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         "G17".to_string()
     }
@@ -236,6 +247,7 @@ impl G17 {
 pub struct G18 {}
 
 impl G18 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         "G18".to_string()
     }
@@ -246,6 +258,7 @@ impl G18 {
 pub struct G19 {}
 
 impl G19 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         "G19".to_string()
     }
@@ -256,6 +269,7 @@ impl G19 {
 pub struct G20 {}
 
 impl G20 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         "G20".to_string()
     }
@@ -266,6 +280,7 @@ impl G20 {
 pub struct G21 {}
 
 impl G21 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         "G21".to_string()
     }
@@ -279,6 +294,7 @@ pub struct G43 {
 }
 
 impl G43 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         format!("G43 H{}", self.h)
     }
@@ -292,6 +308,7 @@ pub struct F {
 }
 
 impl F {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         format!("F{}", round_precision(self.x))
     }
@@ -305,6 +322,7 @@ pub struct S {
 }
 
 impl S {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         format!("S{}", round_precision(self.x))
     }
@@ -315,6 +333,7 @@ impl S {
 pub struct M0 {}
 
 impl M0 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         "M0".to_string()
     }
@@ -325,6 +344,7 @@ impl M0 {
 pub struct M2 {}
 
 impl M2 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         "M2".to_string()
     }
@@ -335,6 +355,7 @@ impl M2 {
 pub struct M3 {}
 
 impl M3 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         "M3".to_string()
     }
@@ -345,6 +366,7 @@ impl M3 {
 pub struct M4 {}
 
 impl M4 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         "M4".to_string()
     }
@@ -355,6 +377,7 @@ impl M4 {
 pub struct M5 {}
 
 impl M5 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         "M5".to_string()
     }
@@ -368,6 +391,7 @@ pub struct M6 {
 }
 
 impl M6 {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         format!("T{} M6", self.t)
     }
@@ -378,6 +402,7 @@ impl M6 {
 pub struct Empty {}
 
 impl Empty {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         "".to_string()
     }
@@ -391,6 +416,7 @@ pub struct Comment {
 }
 
 impl Comment {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         format!(";({})", self.text)
     }
@@ -404,38 +430,66 @@ pub struct Message {
 }
 
 impl Message {
+    /// Generate G-code string
     pub fn to_gcode(&self) -> String {
         format!("(MSG,{})", self.text)
     }
 }
 
+/// The Instruction enum is used to represent a single G-code command in a program.
+/// See the
+/// [Grbl reference](https://github.com/gnea/grbl/wiki/Grbl-v1.1-Commands#g---view-gcode-parser-state)
+/// for more details.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Instruction {
+    /// Command G0, Rapid Move
     G0(G0),
+    /// Command G1, Linear Move
     G1(G1),
+    /// Command G2, Arc Move (clockwise)
     G2(G2),
+    /// Command G3, Arc Move (counterclockwise)
     G3(G3),
+    /// Command G4, Dwell
     G4(G4),
+    /// Command G17, Select Plane XY
     G17(G17),
+    /// Command G18, Select Plane XZ
     G18(G18),
+    /// Command G19, Select Plane YZ
     G19(G19),
+    /// Command G20, Inch Units
     G20(G20),
+    /// Command G20, Millimeter Units
     G21(G21),
+    /// Command G43, Tool Length Offset
     G43(G43),
+    /// Command F, Set Feed Rate
     F(F),
+    /// Command S, Set Spindle Speed
     S(S),
+    /// Command M0, Program Pause
     M0(M0),
+    /// Command M2, Program End
     M2(M2),
+    /// Command M3, Start Spindle (clockwise)
     M3(M3),
+    /// Command M4, Start Spindle (counterclockwise)
     M4(M4),
+    /// Command M5, Stop Spindle
     M5(M5),
+    /// Command M6, Manual Tool Change
     M6(M6),
+    /// Command Empty, Empty Line
     Empty(Empty),
+    /// Command Comment, Comment
     Comment(Comment),
+    /// Command Message, Message to point
     Message(Message),
 }
 
 impl Instruction {
+    /// Converts instruction to G-code
     pub fn to_gcode(&self) -> String {
         match self {
             Instruction::G0(instruction) => instruction.to_gcode(),

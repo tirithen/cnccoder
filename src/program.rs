@@ -1,3 +1,52 @@
+//! The program module contains the highest level components. They are used to
+//! structure the a CNC programs, store and order the cuts and tools.
+//!
+//! Programs are built by extending a program with various tool contexts.
+//! Once a program is complete it can be converted to G-code with
+//! the [.to_gcode()](struct.Program.html#method.to_gcode) method or written
+//! to disk with the [write_project](../filesystem/fn.write_project.html)
+//! function.
+//!
+//! Example:
+//! ```
+//! use anyhow::Result;
+//! use cnccoder::prelude::*;
+//!
+//! fn main() -> Result<()> {
+//!     let mut program = Program::new(
+//!         Units::Metric,
+//!         10.0,
+//!         50.0,
+//!     );
+//!
+//!     let tool = Tool::cylindrical(
+//!         Units::Metric,
+//!         20.0,
+//!         10.0,
+//!         Direction::Clockwise,
+//!         20000.0,
+//!         5000.0
+//!     );
+//!
+//!     program.extend(tool, |context| {
+//!         context.append_cut(Cut::plane(
+//!             Vector3::new(0.0, 0.0, 3.0),
+//!             Vector2::new(100.0, 100.0),
+//!             0.0,
+//!             1.0,
+//!         ));
+//!
+//!         Ok(())
+//!     })?;
+//!
+//!     println!("G-code: {}", program.to_gcode()?);
+//!
+//!     write_project("planing", program, 0.5)?;
+//!
+//!     Ok(())
+//! }
+//! ```
+
 use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -10,15 +59,21 @@ use crate::instructions::*;
 use crate::tools::*;
 use crate::types::*;
 
+/// A high level respresentation of a CNC program operation, Cut, Comment, Message, or Empty.
 #[derive(Debug, Clone)]
 pub enum Operation {
+    /// A high level cut operation.
     Cut(Cut),
+    /// An empty operation.
     Empty(Empty),
+    /// A program comment.
     Comment(Comment),
+    /// A program message.
     Message(Message),
 }
 
 impl Operation {
+    /// The bounds of the operation.
     pub fn bounds(&self) -> Bounds {
         match self {
             Self::Cut(o) => o.bounds(),
@@ -28,6 +83,7 @@ impl Operation {
         }
     }
 
+    /// Converts operation to G-code instructions.
     pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         match self {
             Self::Cut(o) => o.to_instructions(context),
@@ -38,6 +94,9 @@ impl Operation {
     }
 }
 
+/// A program context that keeps the state data for operations paired with a specific tool.
+/// The reason for grouping the operations per tool is to reduce the amound of tool
+/// changes, which is expecially useful for CNC machines that needs manual tool changes..
 #[derive(Debug, Clone)]
 pub struct Context {
     units: Units,
@@ -48,6 +107,7 @@ pub struct Context {
 }
 
 impl Context {
+    /// Creates a new `Context` struct.
     pub fn new(units: Units, tool: Tool, z_safe: f64, z_tool_change: f64) -> Self {
         Self {
             units,
@@ -58,6 +118,9 @@ impl Context {
         }
     }
 
+    /// Applies operations from one context to this context.
+    ///
+    /// Returns error if tool or units are not the same in both contexts.
     pub fn merge(&mut self, context: Context) -> Result<()> {
         if self.units != context.units {
             return Err(anyhow!("Failed to merge due to mismatching units"));
@@ -77,30 +140,40 @@ impl Context {
         Ok(())
     }
 
+    /// Appends an operation to the context.
     pub fn append(&mut self, operation: Operation) {
         self.operations.push(operation);
     }
 
+    /// Appends a cut operation to the context.
     pub fn append_cut(&mut self, cut: Cut) {
         self.append(Operation::Cut(cut));
     }
 
+    /// Returns the units used by the context.
     pub fn units(&self) -> Units {
         self.units
     }
 
+    /// Returns the tool used by the context.
     pub fn tool(&self) -> Tool {
         self.tool
     }
 
+    /// Returns the z safe value set for this context.
+    ///
+    /// The value indicates the z height where the machine tool can safely travel
+    /// in the x and y axis without colliding with the workpiece.
     pub fn z_safe(&self) -> f64 {
         self.z_safe
     }
 
+    /// Returns the z height position used for manual tool change.
     pub fn z_tool_change(&self) -> f64 {
         self.z_tool_change
     }
 
+    /// Returns the bounds for the context
     pub fn bounds(&self) -> Bounds {
         let mut bounds = Bounds::minmax();
 
@@ -141,6 +214,7 @@ impl Context {
         bounds
     }
 
+    /// Converts context to G-code instructions.
     pub fn to_instructions(&self) -> Result<Vec<Instruction>> {
         let mut instructions = vec![];
 
@@ -152,6 +226,8 @@ impl Context {
     }
 }
 
+/// A program that stores information about all structs and tools used in a project. Several programs can
+/// also be merged into a single one.
 #[derive(Debug, Clone)]
 pub struct Program {
     z_safe: f64,
@@ -162,6 +238,7 @@ pub struct Program {
 }
 
 impl Program {
+    /// Creates a new `Program` struct.
     #[must_use]
     pub fn new(units: Units, z_safe: f64, z_tool_change: f64) -> Program {
         Program {
@@ -173,16 +250,23 @@ impl Program {
         }
     }
 
+    /// Returns the z safe value set for this context.
+    ///
+    /// The value indicates the z height where the machine tool can safely travel
+    /// in the x and y axis without colliding with the workpiece.
     #[must_use]
     pub fn z_safe(&self) -> f64 {
         self.z_safe
     }
 
+    /// Returns the z height position used for manual tool change.
     #[must_use]
     pub fn z_tool_change(&self) -> f64 {
         self.z_tool_change
     }
 
+    /// Returns the tools position in a program, this number will then be used in the G-code T commands
+    /// (T1 is the first tool, T2 is the second tool and so on).
     #[must_use]
     pub fn tool_ordering(&self, tool: Tool) -> Option<u32> {
         if let Some(ordering) = self.tool_ordering.lock().unwrap().get(&tool) {
@@ -192,6 +276,8 @@ impl Program {
         None
     }
 
+    /// Allows setting the positional order for a tool, this will also automatically increment the position
+    /// of any tools that comes after the newly repositioned tool, resolving any ordering conflicts.
     pub fn set_tool_ordering(&self, tool: Tool, ordering: u32) {
         let mut tool_ordering = self.tool_ordering.lock().unwrap();
 
@@ -222,6 +308,38 @@ impl Program {
         }
     }
 
+    /// This is the main way of adding cuts to a program.
+    /// It opens a new context for a tool where the program can be extended.
+    ///
+    /// An example for adding cuts to a program:
+    /// ```
+    /// use anyhow::Result;
+    /// use cnccoder::prelude::*;
+    ///
+    /// fn main() -> Result<()> {
+    ///     let mut program = Program::default();
+    ///     let tool = Tool::default();
+    ///
+    ///     // Extend the program with new cuts
+    ///     program.extend(tool, |context| {
+    ///         // Append the planing cuts to the cylindrical tool context
+    ///         context.append_cut(Cut::plane(
+    ///             // Start at the x 0 mm, y 0 mm, z 3 mm coordinates
+    ///             Vector3::new(0.0, 0.0, 3.0),
+    ///             // Plane a 100 x 100 mm area
+    ///             Vector2::new(100.0, 100.0),
+    ///             // Plane down to 0 mm height (from 3 mm)
+    ///             0.0,
+    ///             // Cut at the most 1 mm per pass
+    ///             1.0,
+    ///         ));
+    ///
+    ///         Ok(())
+    ///     })?;
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn extend<Action>(&mut self, tool: Tool, action: Action) -> Result<()>
     where
         Action: Fn(&mut Context) -> Result<()>,
@@ -233,6 +351,9 @@ impl Program {
         action(locked_context)
     }
 
+    /// Merges another program into this program.
+    ///
+    /// Returns error if tool or units are not the same in both programs.
     pub fn merge(&mut self, program: Program) -> Result<()> {
         if self.units != program.units {
             return Err(anyhow!("Failed to merge due to mismatching units"));
@@ -257,6 +378,7 @@ impl Program {
         Ok(())
     }
 
+    /// Returns an ordered vec with all tools used by a program.
     #[must_use]
     pub fn tools(&self) -> Vec<Tool> {
         let mut tools = vec![];
@@ -272,6 +394,7 @@ impl Program {
         tools
     }
 
+    /// Returns the bounds of the program.
     #[must_use]
     pub fn bounds(&self) -> Bounds {
         let mut bounds = Bounds::minmax();
@@ -317,6 +440,7 @@ impl Program {
         bounds
     }
 
+    /// Converts a program to G-code instructions
     #[must_use]
     pub fn to_instructions(&self) -> Result<Vec<Instruction>> {
         let contexts = self.contexts.lock().unwrap();
@@ -399,6 +523,7 @@ impl Program {
         Ok(instructions)
     }
 
+    /// Converts program to G-code
     #[must_use]
     pub fn to_gcode(&self) -> Result<String> {
         Ok(self
@@ -410,10 +535,20 @@ impl Program {
     }
 }
 
+impl Default for Program {
+    fn default() -> Self {
+        Self {
+            z_safe: 50.0,
+            z_tool_change: 100.0,
+            units: Units::default(),
+            contexts: Arc::new(Mutex::new(HashMap::new())),
+            tool_ordering: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{Vector2, Vector3};
-
     use super::*;
 
     #[test]
@@ -532,7 +667,7 @@ mod tests {
 
         let expected_output = vec![
             Instruction::G17(G17 {}),
-            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400 mm/min".to_string() }),
+            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
@@ -554,7 +689,7 @@ mod tests {
             Instruction::G1(G1 { x: Some(5.0), y: Some(10.0), z: Some(-0.1), f: None }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::Empty(Empty {}),
-            Instruction::Comment(Comment { text: "Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min".to_string() }),
+            Instruction::Comment(Comment { text: "Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400\"/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
@@ -588,7 +723,7 @@ mod tests {
 
         let expected_output = vec![
             Instruction::G17(G17 {}),
-            Instruction::Comment(Comment { text: "Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min".to_string() }),
+            Instruction::Comment(Comment { text: "Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400\"/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
@@ -610,7 +745,7 @@ mod tests {
             Instruction::G1(G1 { x: Some(20.0), y: Some(20.0), z: Some(-0.1), f: None }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
             Instruction::Empty(Empty {}),
-            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400 mm/min".to_string() }),
+            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
@@ -707,7 +842,7 @@ mod tests {
 
         let expected_output = vec![
             Instruction::G17(G17 {}),
-            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400 mm/min".to_string() }),
+            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
@@ -743,7 +878,7 @@ mod tests {
             Instruction::G1(G1 { x: Some(15.0), y: Some(20.0), z: Some(-0.1), f: None }),
             Instruction::G0(G0 { x: None, y: None, z: Some(5.0) }),
             Instruction::Empty(Empty {}),
-            Instruction::Comment(Comment { text: "Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min".to_string() }),
+            Instruction::Comment(Comment { text: "Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400\"/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
@@ -827,7 +962,7 @@ mod tests {
 
         let expected_output = vec![
             "G17".to_string(),
-            ";(Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000, feed_rate = 400\"/min)".to_string(),
+            ";(Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400\"/min)".to_string(),
             "G20".to_string(),
             "G0 Z50".to_string(),
             "M5".to_string(),
@@ -849,7 +984,7 @@ mod tests {
             "G1 X20 Y20 Z-0.1".to_string(),
             "G0 Z10".to_string(),
             "".to_string(),
-            ";(Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400 mm/min)".to_string(),
+            ";(Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min)".to_string(),
             "G20".to_string(),
             "G0 Z50".to_string(),
             "M5".to_string(),

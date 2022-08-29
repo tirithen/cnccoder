@@ -5,17 +5,37 @@ use crate::program::*;
 use crate::types::*;
 use crate::utils::*;
 
+/// Surface cut an area, can be used for both planing and rectangular pockets.
 #[derive(Debug, Clone)]
 pub struct Area {
+    /// Start point in 3D space.
     pub start: Vector3,
+    /// Size of the area.
     pub size: Vector2,
+    /// The end depth of the cut on the z axis.
     pub end_z: f64,
+    /// The end depth to stop at on the slope (used for deprecated
+    /// [Area::new_with_slope](struct.Area.html#method.new_with_slope) method).
+    /// For future compatability it can be set to the same value as `end_z`, or
+    /// use [Area::new](struct.Area.html#method.new) method that does this
+    /// internally already.
+    #[deprecated(
+        since = "0.1.0",
+        note = "Only works in one direction, will likely be removed in future releases."
+    )]
     pub end_z_stop: f64,
+    /// The maximum depth to cut on the z axis on each pass.
     pub max_step_z: f64,
+    /// Indicates how a path should be compensated by the radius of the tool.
+    /// `ToolPathCompensation::Inner` is useful for pocket cuts,
+    /// `ToolPathCompensation::Outer` is useful for cutting out rectangle
+    /// pieces.
     pub compensation: ToolPathCompensation,
 }
 
+#[allow(deprecated)]
 impl Area {
+    /// Creates a new `Area` struct.
     #[must_use]
     pub fn new(
         start: Vector3,
@@ -34,6 +54,14 @@ impl Area {
         }
     }
 
+    /// Creates a new `Area` struct that cuts a slope. This method is
+    /// deprecated as it has no options to choose in which direction
+    /// the slope should be cut, and will therefore likely be removed
+    /// eventually.
+    #[deprecated(
+        since = "0.1.0",
+        note = "Only works in one direction, will likely be removed in future releases."
+    )]
     #[must_use]
     pub fn new_with_slope(
         start: Vector3,
@@ -53,6 +81,7 @@ impl Area {
         }
     }
 
+    /// Returns the bounds of the cut.
     #[must_use]
     pub fn bounds(&self) -> Bounds {
         Bounds {
@@ -65,6 +94,7 @@ impl Area {
         }
     }
 
+    /// Converts the struct to G-code instructions.
     #[must_use]
     pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let tool_radius = context.tool().radius();

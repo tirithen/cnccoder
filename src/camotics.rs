@@ -1,29 +1,46 @@
+//! Helper module for generating Camotics project files.
+
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
 use crate::{program::*, tools::*, types::*};
 
+/// Resolution mode, when creating a Camotics struct `ResolutionMode::Manual`
+/// is used by default to allow setting a custom resolution for the simulation.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ResolutionMode {
+    /// Corresponds to a resolution of 0.116348.
     High,
+    /// Corresponds to a resolution of 0.428631.
     Low,
+    /// Allows for custom resolution values to be set.
     Manual,
 }
 
+/// Defines the size of the workpiece, when creating a Camotics struct these
+/// values are calculated from the program.
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
 pub struct Workpiece {
+    /// Indicates of bounds should be calculated by Camotics automatically.
     pub automatic: bool,
+    /// Extra margin added to the Camotics atumated calculation.
     pub margin: f64,
+    /// Manual bounds for the workpiece, will be automatically calculated
+    /// from the program.
     pub bounds: Bounds,
 }
 
+/// Tool shape, will be derived from the [tools](../tools/index.html) used in the program.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum CamoticsToolShape {
+    /// Cylindrical tool
     Cylindrical,
+    /// Ballnose tool
     Ballnose,
+    /// Conical tool
     Conical,
 }
 
@@ -33,18 +50,27 @@ impl Default for CamoticsToolShape {
     }
 }
 
+/// Tool definition in the format required by Camotics, will be derived from the
+/// [tools](../tools/index.html) used in the program.
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
 pub struct CamoticsTool {
+    /// Measurement units of the tool
     pub units: Units,
+    /// Angle of a conical tool
     #[serde(skip_serializing_if = "Option::is_none")]
     pub angle: Option<f64>,
+    /// Cutter length of the tool
     pub length: f64,
+    /// Cutter diameter of the tool
     pub diameter: f64,
+    /// The tool number/identifier
     pub number: u32,
+    /// The shape of the tool
     pub shape: CamoticsToolShape,
 }
 
 impl CamoticsTool {
+    /// Creates a new `CamoticsTool` from a program [Tool](../tools/enum.Tool.html).
     #[must_use]
     pub fn from_tool(tool: Tool, number: u32) -> Self {
         match tool {
@@ -76,22 +102,44 @@ impl CamoticsTool {
     }
 }
 
+/// Representation for a [Camotics](https://camotics.org/) project file,
+/// running `.to_json_string()` outputs a project file that can be opened
+/// directly by Camotics.
+///
+/// To write a camotics file and a gcode file in one go, see
+/// [write_project](../filesystem/fn.write_project.html).
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Camotics {
+    /// The name of the project.
     #[serde(skip_serializing)]
     pub name: String,
+    /// The units used by the project.
     pub units: Units,
+    /// The resolution mode used by the project, will be `ResolutionMode::Manual`
+    /// by default.
     #[serde(rename(serialize = "resolution-mode"))]
     pub resolution_mode: ResolutionMode,
+    /// The resolution used for the simulation, a higher value uses more system
+    /// memory and takes longer/more CPU to simulate. Suggested value is between
+    /// 0.5 and 1.0 depending on the detail value required. A lower value equals
+    /// more detail.
     pub resolution: f64,
+    /// Tools used in the project, when using
+    /// [Camotics::from_program](struct.Camotics.html#method.new) the
+    /// program tools passed in will be converted to `CamoticsTool` instances.
     pub tools: HashMap<u32, CamoticsTool>,
+    /// The size of the workpiece for the project.
     pub workpiece: Workpiece,
+    /// The G-code files used by this project. When using
+    /// [Camotics::from_program](struct.Camotics.html#method.new)
+    /// the program G-code filename will be added from the name argument.
     pub files: Vec<String>,
 }
 
 impl Camotics {
+    /// Creates a new `Camotics` project struct from a name, program tools, bounds, and resolution.
     #[must_use]
-    pub fn new(name: &str, tools: Vec<Tool>, workpiece: Bounds) -> Self {
+    pub fn new(name: &str, tools: Vec<Tool>, workpiece: Bounds, resolution: f64) -> Self {
         let mut tools_map = HashMap::new();
 
         for (index, tool) in tools.iter().enumerate() {
@@ -103,7 +151,7 @@ impl Camotics {
             name: name.to_string(),
             units: Units::Metric,
             resolution_mode: ResolutionMode::Manual,
-            resolution: 1.0,
+            resolution,
             tools: tools_map,
             workpiece: Workpiece {
                 automatic: false,
@@ -114,13 +162,16 @@ impl Camotics {
         }
     }
 
+    /// Creates a new `Camotics` struct from a name, program, and resolution.
     #[must_use]
-    pub fn from_program(name: &str, program: Program) -> Self {
+    pub fn from_program(name: &str, program: Program, resolution: f64) -> Self {
         let tools = program.tools();
         let workpiece = program.bounds();
-        Self::new(name, tools, workpiece)
+        Self::new(name, tools, workpiece, resolution)
     }
 
+    /// Serializes the Camotics struct to the JSON format used by the Camotics
+    /// application when loading a project.
     #[must_use]
     pub fn to_json_string(&self) -> String {
         serde_json::to_string_pretty(&self).unwrap()
@@ -250,7 +301,7 @@ mod tests {
             Ok(())
         })?;
 
-        let camotics = Camotics::from_program("test-project", program.clone());
+        let camotics = Camotics::from_program("test-project", program.clone(), 1.0);
 
         let mut tools = HashMap::new();
         tools.insert(1, CamoticsTool::from_tool(tool, 1));

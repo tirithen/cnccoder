@@ -48,6 +48,8 @@ macro_rules! as_serde_tuple {
 }
 
 as_serde_tuple! {
+    #[allow(missing_docs)]
+    /// Represents a 2D point in space.
     #[derive(Default, Debug, PartialEq, Clone, Copy)]
     pub struct Vector2 {
         pub x: f64,
@@ -56,11 +58,13 @@ as_serde_tuple! {
 }
 
 impl Vector2 {
+    /// Create a 2D point struct from x and y coordinates.
     #[must_use]
     pub fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
 
+    /// Create a 2D point struct using `f64::MIN` for x and y coordinates.
     #[must_use]
     pub fn min() -> Self {
         Self {
@@ -69,6 +73,7 @@ impl Vector2 {
         }
     }
 
+    /// Create a 2D point struct using `f64::MAX` for x and y coordinates.
     #[must_use]
     pub fn max() -> Self {
         Self {
@@ -77,23 +82,25 @@ impl Vector2 {
         }
     }
 
+    /// Calculate the distance to another `Vector2` struct.
     #[must_use]
     pub fn distance_to(&self, to: Self) -> f64 {
         ((self.x - to.x) * (self.x - to.x) + (self.y - to.y) * (self.y - to.y)).sqrt()
     }
 
-    /// Computes the angle in radians with respect to the positive x-axis
+    /// Computes the angle in radians with respect to the positive x-axis.
     #[must_use]
     pub fn angle(&self) -> f64 {
         (-self.x).atan2(-self.y) + PI
     }
 
-    /// Computes the angle in degrees with respect to the positive x-axis
+    /// Computes the angle in degrees with respect to the positive x-axis.
     #[must_use]
     pub fn angle_degrees(&self) -> f64 {
         self.angle().to_degrees()
     }
 
+    /// Returns a new `Vector2` incrementing the x coordinate by the given value.
     #[must_use]
     pub fn add_x(&self, value: f64) -> Self {
         let mut vector = *self;
@@ -101,6 +108,7 @@ impl Vector2 {
         vector
     }
 
+    /// Returns a new `Vector2` incrementing the y coordinate by the given value.
     #[must_use]
     pub fn add_y(&self, value: f64) -> Self {
         let mut vector = *self;
@@ -165,6 +173,8 @@ impl fmt::Display for Vector2 {
 }
 
 as_serde_tuple! {
+    #[allow(missing_docs)]
+    /// Represents a 3D point in space.
     #[derive(Default, Debug, PartialEq, Clone, Copy)]
     pub struct Vector3 {
         pub x: f64,
@@ -174,11 +184,13 @@ as_serde_tuple! {
 }
 
 impl Vector3 {
+    /// Create a 3D point struct from x, y and z coordinates.
     #[must_use]
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
 
+    /// Create a 3D point struct using `f64::MIN` for x, y and z coordinates.
     #[must_use]
     pub fn min() -> Self {
         Self {
@@ -188,6 +200,7 @@ impl Vector3 {
         }
     }
 
+    /// Create a 3D point struct using `f64::MAX` for x, y and z coordinates.
     #[must_use]
     pub fn max() -> Self {
         Self {
@@ -197,6 +210,7 @@ impl Vector3 {
         }
     }
 
+    /// Calculate the distance to another `Vector3` struct.
     #[must_use]
     pub fn distance_to(&self, to: Self) -> f64 {
         ((self.x - to.x) * (self.x - to.x)
@@ -205,21 +219,25 @@ impl Vector3 {
             .sqrt()
     }
 
+    /// Returns a `Vector2` struct using the x and y coordinates from this `Vector3` struct.
     #[must_use]
     pub fn xy(&self) -> Vector2 {
         Vector2::new(self.x, self.y)
     }
 
+    /// Returns a `Vector2` struct using the x and z coordinates from this `Vector3` struct.
     #[must_use]
     pub fn xz(&self) -> Vector2 {
         Vector2::new(self.x, self.z)
     }
 
+    /// Returns a `Vector2` struct using the y and z coordinates from this `Vector3` struct.
     #[must_use]
     pub fn yz(&self) -> Vector2 {
         Vector2::new(self.y, self.z)
     }
 
+    /// Returns a new `Vector3` incrementing the x coordinate by the given value.
     #[must_use]
     pub fn add_x(&self, value: f64) -> Self {
         let mut vector = *self;
@@ -227,6 +245,7 @@ impl Vector3 {
         vector
     }
 
+    /// Returns a new `Vector3` incrementing the y coordinate by the given value.
     #[must_use]
     pub fn add_y(&self, value: f64) -> Self {
         let mut vector = *self;
@@ -234,6 +253,7 @@ impl Vector3 {
         vector
     }
 
+    /// Returns a new `Vector3` incrementing the z coordinate by the given value.
     #[must_use]
     pub fn add_z(&self, value: f64) -> Self {
         let mut vector = *self;

@@ -5,21 +5,35 @@ use crate::program::*;
 use crate::types::*;
 use crate::utils::*;
 
+/// Cut a circle spiraling down in a helix to `end_z`.
+///
+/// If the circle radius equals the tool radius with `ToolPathCompensation::None` the cut will
+/// instead be a drilling top/down cut. Unlike [Area](struct.Area.html), the circle cut will
+/// only cut at the edge of the circle, and not cut inside the circle.
 #[derive(Debug, Clone)]
 pub struct Circle {
+    /// Start point in 3D space.
     pub start: Vector3,
-    pub end_z: f64,
+    /// The circle radius
     pub radius: f64,
+    /// The end depth of the cut on the z axis.
+    pub end_z: f64,
+    /// The maximum depth to cut on the z axis on each pass.
     pub max_step_z: f64,
+    /// Indicates how a path should be compensated by the radius of the tool.
+    /// `ToolPathCompensation::Inner` is useful for cutting holes wider than the tool,
+    /// `ToolPathCompensation::Outer` is useful for cutting out round pieces, and
+    /// `ToolPathCompensation::Outer` is useful when drilling.
     pub compensation: ToolPathCompensation,
 }
 
 impl Circle {
+    /// Creates a new `Circle` struct.
     #[must_use]
     pub fn new(
         start: Vector3,
-        end_z: f64,
         radius: f64,
+        end_z: f64,
         max_step_z: f64,
         compensation: ToolPathCompensation,
     ) -> Self {
@@ -32,17 +46,19 @@ impl Circle {
         }
     }
 
+    /// Drill cut from start coordinate to end z depth.
     #[must_use]
     pub fn drill(start: Vector3, end_z: f64) -> Self {
         Self {
             start,
-            end_z,
             radius: 0.0,
+            end_z,
             max_step_z: 0.0,
             compensation: ToolPathCompensation::None,
         }
     }
 
+    /// Returns the bounds of the cut.
     #[must_use]
     pub fn bounds(&self) -> Bounds {
         Bounds {
@@ -59,6 +75,7 @@ impl Circle {
         }
     }
 
+    /// Converts the struct to G-code instructions.
     #[must_use]
     pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let mut instructions = vec![];

@@ -5,16 +5,27 @@ use crate::program::*;
 use crate::types::*;
 use crate::utils::*;
 
+/// Cut a frame around an area. Unlike [Area](struct.Area.html), the frame cut will only cut at the edge
+/// of the area, and not cut inside.
 #[derive(Debug, Clone)]
 pub struct Frame {
+    /// Start point in 3D space.
     pub start: Vector3,
+    /// Size of the area.
     pub size: Vector2,
+    /// The end depth of the cut on the z axis.
     pub end_z: f64,
+    /// The maximum depth to cut on the z axis on each pass.
     pub max_step_z: f64,
+    /// Indicates how a path should be compensated by the radius of the tool.
+    /// `ToolPathCompensation::Inner` is useful for cutting rectangular holes,
+    /// `ToolPathCompensation::Outer` is useful for cutting out rectangle
+    /// pieces.
     pub compensation: ToolPathCompensation,
 }
 
 impl Frame {
+    /// Creates a new `Frame` struct.
     #[must_use]
     pub fn new(
         start: Vector3,
@@ -32,6 +43,7 @@ impl Frame {
         }
     }
 
+    /// Returns the bounds of the cut.
     #[must_use]
     pub fn bounds(&self) -> Bounds {
         Bounds {
@@ -44,6 +56,7 @@ impl Frame {
         }
     }
 
+    /// Converts the struct to G-code instructions.
     #[must_use]
     pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let tool_radius = context.tool().radius();

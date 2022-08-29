@@ -1,11 +1,52 @@
+//! Provides helpers for writing G-code and project files to disk.
+
 use std::{fs::File, io::Write};
 
 use anyhow::Result;
 
 use crate::{camotics::*, program::*};
 
-pub fn write_project(name: &str, program: Program) -> Result<()> {
-    let camotics = Camotics::from_program(name, program.clone());
+/// Writes .gcode and .camotics files from a program to disk.
+///
+/// Example for planing a surface area to a specific height (z axis is vertical):
+/// ```
+/// use anyhow::Result;
+/// use cnccoder::prelude::*;
+///
+/// fn main() -> Result<()> {
+///     let mut program = Program::new(
+///         Units::Metric,
+///         10.0,
+///         50.0,
+///     );
+///
+///     let tool = Tool::cylindrical(
+///         Units::Metric,
+///         20.0,
+///         10.0,
+///         Direction::Clockwise,
+///         20000.0,
+///         5000.0
+///     );
+///
+///     program.extend(tool, |context| {
+///         context.append_cut(Cut::plane(
+///             Vector3::new(0.0, 0.0, 3.0),
+///             Vector2::new(100.0, 100.0),
+///             0.0,
+///             1.0,
+///         ));
+///
+///         Ok(())
+///     })?;
+///
+///     write_project("planing", program, 0.5)?;
+///
+///     Ok(())
+/// }
+/// ```
+pub fn write_project(name: &str, program: Program, camotics_resolution: f64) -> Result<()> {
+    let camotics = Camotics::from_program(name, program.clone(), camotics_resolution);
     let gcode = program.to_gcode()?;
 
     let mut camotics_file = File::create(format!("{}.camotics", name))?;
@@ -64,9 +105,11 @@ mod tests {
                 -0.1,
                 1.0,
             ));
-        });
 
-        write_project("test-temp", program)?;
+            Ok(())
+        })?;
+
+        write_project("test-temp", program, 0.5)?;
 
         let camotics: Value =
             serde_json::from_str(&read_to_string("test-temp.camotics".to_string())?)?;
@@ -113,7 +156,8 @@ mod tests {
         let gcode = read_to_string("test-temp.gcode".to_string())?;
         remove_file("test-temp.gcode")?;
 
-        assert_eq!(gcode, r#";(Tool change: Cylindrical tool diameter = 4mm, length = 50mm, direction = clockwise, spindle_speed = 5000, feed_rate = 400mm/min)
+        assert_eq!(gcode, r#"G17
+;(Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min)
 G21
 G0 Z50
 M5
@@ -155,6 +199,7 @@ G1 X5 Y10 Z-0.1
 G1 X67 Y102 Z-0.1
 G1 X23 Y12 Z-0.1
 G0 Z10
+G0 Z50
 
 M2"#.to_string());
 

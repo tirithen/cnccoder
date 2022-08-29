@@ -1,13 +1,20 @@
 use anyhow::Result;
 
-use crate::{Cut, Program, Tool, Units, Vector2, Vector3};
+use crate::prelude::*;
 
+/// Measurements required by the planing program.
 pub struct PlaningMeasurements {
+    /// The length to plane on the x axis.
     pub x_length: f64,
+    /// The length to plane on the y axis.
     pub y_length: f64,
+    /// The height of where to start the planing on the z axis.
     pub z_start: f64,
+    /// The depth of where to end the planing on the z axis.
     pub z_end: f64,
+    /// The maximum depth to cut on the z axis on each pass.
     pub z_max_step: f64,
+    /// The units used for the measurements.
     pub units: Units,
 }
 
@@ -26,6 +33,7 @@ impl Default for PlaningMeasurements {
     }
 }
 
+/// A program for planing a surface down to a specific depth.
 pub fn planing(tool: Tool, measurements: PlaningMeasurements) -> Result<Program> {
     let mut program = Program::new(
         measurements.units,

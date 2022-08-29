@@ -5,16 +5,29 @@ use crate::program::*;
 use crate::types::*;
 use crate::utils::*;
 
+/// Arc move from one 3D point to another on either of the xyz axis and in either rotation
+/// direction.
+///
+/// It can be used to cut in a arc/circle or helix. It will be converted to
+/// G2 and G3 G-code instructions.
 #[derive(Debug, Clone)]
 pub struct Arc {
+    /// Starting point in 3D space.
     pub from: Vector3,
+    /// End point in 3D space.
     pub to: Vector3,
+    /// Center point in 3D space, will be used along with from and to to derive the radius.
+    /// The center must be places so that it has the same distance between center -> from,
+    /// and center -> to.
     pub center: Vector3,
+    /// The axis to cut around, when `Axis::Z` is used the cut will be top/down.
     pub axis: Axis,
+    /// The direction to cut the arc with.
     pub direction: Direction,
 }
 
 impl Arc {
+    /// Creates an `Arc` struct.
     #[must_use]
     pub fn new(
         from: Vector3,
@@ -32,6 +45,7 @@ impl Arc {
         }
     }
 
+    /// Returns the radius of the arc.
     #[must_use]
     pub fn radius(&self) -> f64 {
         self.from
@@ -39,6 +53,7 @@ impl Arc {
             .max(self.to.distance_to(self.center))
     }
 
+    /// Bounds in 3D space for the arc move, currently this is not yet properly calculated.
     #[must_use]
     pub fn bounds(&self) -> Bounds {
         Bounds {
@@ -63,6 +78,8 @@ impl Arc {
         */
     }
 
+    /// Converts arc to G-code instructions, will return error if the distance between
+    /// center -> from does not equal center -> to.
     #[must_use]
     pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let distance_from = self.from.distance_to(self.center);

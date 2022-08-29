@@ -5,18 +5,23 @@ use crate::program::*;
 use crate::types::*;
 use crate::utils::*;
 
+/// Linear move from one 3D point to another.
 #[derive(Debug, Clone)]
 pub struct Line {
+    /// Starting point in 3D space.
     pub from: Vector3,
+    /// End point in 3D space.
     pub to: Vector3,
 }
 
 impl Line {
+    /// Creates an `Line` struct.
     #[must_use]
     pub fn new(from: Vector3, to: Vector3) -> Self {
         Self { from, to }
     }
 
+    /// Bounds in 3D space for the linear move.
     #[must_use]
     pub fn bounds(&self) -> Bounds {
         let max_x = self.from.x.max(self.to.x);
@@ -32,6 +37,7 @@ impl Line {
         }
     }
 
+    /// Converts the struct to G-code instructions.
     #[must_use]
     pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let mut instructions = vec![];

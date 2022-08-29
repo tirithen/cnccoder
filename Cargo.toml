@@ -1,21 +1,28 @@
 [package]
 name = "cnccoder"
 authors = ["Fredrik Söderström <tirithen@gmail.com>"]
-description = "A library for generating gcode operations targeted for cnc machines, and also generates camotics projects for simulation"
-license = "GPLv2"
+description = "A library for generating gcode operations targeted for GRBL controled cnc machines, and also generates camotics projects for simulation"
+license = "MIT"
 version = "0.1.0"
 edition = "2021"
+
+[features]
+default = ["filesystem", "doc-images"]
+filesystem = []
+doc-images = []
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
 lazy_static = "1"
+embed-doc-image = "0.1"
 
 [profile.release]
 opt-level = 's'
 lto = true
 
-[features]
-filesystem = []
-simulation = []
+[package.metadata.docs.rs]
+# docs.rs uses a nightly compiler, so by instructing it to use our `doc-images` feature we
+# ensure that it will render any images that we may have in inner attribute documentation.
+features = ["doc-images"]
