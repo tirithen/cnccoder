@@ -112,7 +112,7 @@ mod tests {
         write_project("test-temp", program, 0.5)?;
 
         let camotics: Value =
-            serde_json::from_str(&read_to_string("test-temp.camotics".to_string())?)?;
+            serde_json::from_str(&read_to_string("test-temp.camotics")?)?;
         remove_file("test-temp.camotics")?;
 
         let expected_camotics_output: Value = serde_json::from_str(
@@ -153,7 +153,7 @@ mod tests {
 
         assert_eq!(camotics, expected_camotics_output);
 
-        let gcode = read_to_string("test-temp.gcode".to_string())?;
+        let gcode = read_to_string("test-temp.gcode")?;
         remove_file("test-temp.gcode")?;
 
         assert_eq!(gcode, r#"G17

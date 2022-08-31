@@ -121,7 +121,7 @@ impl Segment {
     /// Helper for creating multiple 2D "waypoint" point segments at once.
     #[must_use]
     pub fn points(points: Vec<Vector2>) -> Vec<Self> {
-        points.into_iter().map(|point| Self::Point(point)).collect()
+        points.into_iter().map(Self::Point).collect()
     }
 }
 
@@ -305,7 +305,6 @@ impl Path {
     }
 
     /// Converts the struct to G-code instructions.
-    #[must_use]
     pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let mut instructions = vec![];
 

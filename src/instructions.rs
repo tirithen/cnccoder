@@ -4,6 +4,7 @@
 //! they are primarily intended to be used internally by the higher level [cuts](../cuts/index.html).
 
 use std::time::Duration;
+use std::fmt::Write as _;
 
 use crate::utils::round_precision;
 
@@ -24,15 +25,15 @@ impl G0 {
         let mut command = "G0".to_string();
 
         if let Some(x) = self.x {
-            command.push_str(&format!(" X{}", round_precision(x)));
+            let _ = write!(command, " X{}", round_precision(x));
         }
 
         if let Some(y) = self.y {
-            command.push_str(&format!(" Y{}", round_precision(y)));
+            let _ = write!(command, " Y{}", round_precision(y));
         }
 
         if let Some(z) = self.z {
-            command.push_str(&format!(" Z{}", round_precision(z)));
+            let _ = write!(command, " Z{}", round_precision(z));
         }
 
         command
@@ -58,19 +59,19 @@ impl G1 {
         let mut command = "G1".to_string();
 
         if let Some(x) = self.x {
-            command.push_str(&format!(" X{}", round_precision(x)));
+            let _ = write!(command, " X{}", round_precision(x));
         }
 
         if let Some(y) = self.y {
-            command.push_str(&format!(" Y{}", round_precision(y)));
+            let _ = write!(command, " Y{}", round_precision(y));
         }
 
         if let Some(z) = self.z {
-            command.push_str(&format!(" Z{}", round_precision(z)));
+            let _ = write!(command, " Z{}", round_precision(z));
         }
 
         if let Some(f) = self.f {
-            command.push_str(&format!(" F{}", round_precision(f)));
+            let _ = write!(command, " F{}", round_precision(f));
         }
 
         command
@@ -108,39 +109,39 @@ impl G2 {
         let mut command = "G2".to_string();
 
         if let Some(x) = self.x {
-            command.push_str(&format!(" X{}", round_precision(x)));
+            let _ = write!(command, " X{}", round_precision(x));
         }
 
         if let Some(y) = self.y {
-            command.push_str(&format!(" Y{}", round_precision(y)));
+            let _ = write!(command, " Y{}", round_precision(y));
         }
 
         if let Some(z) = self.z {
-            command.push_str(&format!(" Z{}", round_precision(z)));
+            let _ = write!(command, " Z{}", round_precision(z));
         }
 
         if let Some(r) = self.r {
-            command.push_str(&format!(" R{}", round_precision(r)));
+            let _ = write!(command, " R{}", round_precision(r));
         } else {
             if let Some(i) = self.i {
-                command.push_str(&format!(" I{}", round_precision(i)));
+                let _ = write!(command, " I{}", round_precision(i));
             }
 
             if let Some(j) = self.j {
-                command.push_str(&format!(" J{}", round_precision(j)));
+                let _ = write!(command, " J{}", round_precision(j));
             }
 
             if let Some(k) = self.k {
-                command.push_str(&format!(" K{}", round_precision(k)));
+                let _ = write!(command, " K{}", round_precision(k));
             }
         }
 
         if let Some(p) = self.p {
-            command.push_str(&format!(" P{}", p));
+            let _ = write!(command, " P{}", round_precision(p.into()));
         }
 
         if let Some(f) = self.f {
-            command.push_str(&format!(" F{}", round_precision(f)));
+            let _ = write!(command, " F{}", round_precision(f));
         }
 
         command
@@ -178,39 +179,39 @@ impl G3 {
         let mut command = "G3".to_string();
 
         if let Some(x) = self.x {
-            command.push_str(&format!(" X{}", round_precision(x)));
+            let _ = write!(command, " X{}", round_precision(x));
         }
 
         if let Some(y) = self.y {
-            command.push_str(&format!(" Y{}", round_precision(y)));
+            let _ = write!(command, " Y{}", round_precision(y));
         }
 
         if let Some(z) = self.z {
-            command.push_str(&format!(" Z{}", round_precision(z)));
+            let _ = write!(command, " Z{}", round_precision(z));
         }
 
         if let Some(r) = self.r {
-            command.push_str(&format!(" R{}", round_precision(r)));
+            let _ = write!(command, " R{}", round_precision(r));
         } else {
             if let Some(i) = self.i {
-                command.push_str(&format!(" I{}", round_precision(i)));
+                let _ = write!(command, " I{}", round_precision(i));
             }
 
             if let Some(j) = self.j {
-                command.push_str(&format!(" J{}", round_precision(j)));
+                let _ = write!(command, " J{}", round_precision(j));
             }
 
             if let Some(k) = self.k {
-                command.push_str(&format!(" K{}", round_precision(k)));
+                let _ = write!(command, " K{}", round_precision(k));
             }
         }
 
         if let Some(p) = self.p {
-            command.push_str(&format!(" P{}", p));
+            let _ = write!(command, " P{}", round_precision(p.into()));
         }
 
         if let Some(f) = self.f {
-            command.push_str(&format!(" F{}", round_precision(f)));
+            let _ = write!(command, " F{}", round_precision(f));
         }
 
         command

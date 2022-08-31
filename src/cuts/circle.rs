@@ -76,7 +76,6 @@ impl Circle {
     }
 
     /// Converts the struct to G-code instructions.
-    #[must_use]
     pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let mut instructions = vec![];
 
@@ -86,7 +85,7 @@ impl Circle {
             ToolPathCompensation::Outer => self.radius + context.tool().radius(),
         };
 
-        if cut_radius >= 0.0 && cut_radius < 0.001 {
+        if (0.0..0.001).contains(&cut_radius) {
             instructions.append(&mut vec![
                 Instruction::Empty(Empty {}),
                 Instruction::Comment(Comment {

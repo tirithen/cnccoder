@@ -20,7 +20,6 @@ macro_rules! as_serde_tuple {
         }
 
         impl<'de> Deserialize<'de> for $sname {
-            #[must_use]
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
                 where D: Deserializer<'de>
             {
@@ -28,12 +27,11 @@ macro_rules! as_serde_tuple {
                 pub struct Array($(pub $ftype,)*);
 
                 Deserialize::deserialize(deserializer)
-                    .map(|Array($($fname,)*)| Self { $($fname: $fname,)* })
+                    .map(|Array($($fname,)*)| Self { $($fname,)* })
             }
         }
 
         impl Serialize for $sname {
-            #[must_use]
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
                 S: Serializer,

@@ -212,7 +212,6 @@ impl Cut {
     }
 
     /// Converts the cuts to a list of G-code instructions
-    #[must_use]
     pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         match self {
             Self::Arc(c) => c.to_instructions(context),

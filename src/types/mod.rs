@@ -8,21 +8,12 @@ mod vector;
 pub use vector::*;
 
 /// Represents an area in 3D space from one min and one max [Vector3](struct.Vector3.html) point.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
+#[derive(Default, Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
 pub struct Bounds {
     /// Minimum 3D point of the boundary.
     pub min: Vector3,
     /// Maximum 3D point of the boundary.
     pub max: Vector3,
-}
-
-impl Default for Bounds {
-    fn default() -> Self {
-        Self {
-            min: Vector3::default(),
-            max: Vector3::default(),
-        }
-    }
 }
 
 impl Bounds {

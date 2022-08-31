@@ -441,7 +441,6 @@ impl Program {
     }
 
     /// Converts a program to G-code instructions
-    #[must_use]
     pub fn to_instructions(&self) -> Result<Vec<Instruction>> {
         let contexts = self.contexts.lock().unwrap();
         let tools = self.tools();
@@ -524,7 +523,6 @@ impl Program {
     }
 
     /// Converts program to G-code
-    #[must_use]
     pub fn to_gcode(&self) -> Result<String> {
         Ok(self
             .to_instructions()?

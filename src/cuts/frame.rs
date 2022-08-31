@@ -57,7 +57,6 @@ impl Frame {
     }
 
     /// Converts the struct to G-code instructions.
-    #[must_use]
     pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let tool_radius = context.tool().radius();
         let tool_diameter = context.tool().diameter();
