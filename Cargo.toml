@@ -2,9 +2,10 @@
 name = "cnccoder"
 authors = ["Fredrik Söderström <tirithen@gmail.com>"]
 description = "A library for generating gcode operations targeted for GRBL controled cnc machines, and also generates camotics projects for simulation"
-license = "MIT"
+license = "MIT OR Apache-2.0"
 version = "0.1.0"
 edition = "2021"
+keywords = ["cnc", "gcode", "grbl", "camotics"]
 
 [features]
 default = ["filesystem", "doc-images"]

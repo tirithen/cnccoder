@@ -100,8 +100,8 @@ You can help out in several ways:
 4. Extend the documentation or examples
 5. Contribute code changes
 
-Feedback on why/how this crate is hard to use/has features that does not make
-sense might be as valuable as code contributions.
+Feedback on the ergonomics of this crate or its features/ lack there of might
+be as valuable as code contributions.
 
 ### Code contributions
 
@@ -122,4 +122,9 @@ calculated and the release changelog can be automatically generated.
 
 ## License
 
-The project is released under the MIT license, for details see `LICENSE.md`.
+Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or 
+[MIT license](LICENSE-MIT) at your option.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in Serde by you, as defined in the Apache-2.0 license, shall be
+dual licensed as above, without any additional terms or conditions.
