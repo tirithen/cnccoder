@@ -3,8 +3,8 @@
 //! This is the lowest level of structs in the crate. Even if they are publicly exposed,
 //! they are primarily intended to be used internally by the higher level [cuts](../cuts/index.html).
 
-use std::time::Duration;
 use std::fmt::Write as _;
+use std::time::Duration;
 
 use crate::utils::round_precision;
 

@@ -500,7 +500,7 @@ impl Program {
         let mut workplane = Instruction::Empty(Empty {});
         let raw_length = raw_instructions.len();
         let mut instructions = vec![];
-        for (index, instruction) in (&raw_instructions).iter().enumerate() {
+        for (index, instruction) in raw_instructions.iter().enumerate() {
             if *instruction == Instruction::G17(G17 {})
                 || *instruction == Instruction::G18(G18 {})
                 || *instruction == Instruction::G19(G19 {})

@@ -9,7 +9,7 @@ pub fn scale(x: f64, in_min: f64, in_max: f64, out_min: f64, out_max: f64) -> f6
 /// Rounds an f64 value to 4 decimal digits, for example used to reduce clutter in G-code.
 #[must_use]
 pub fn round_precision(value: f64) -> f64 {
-    ((value * 10000.0) as f64).round() / 10000.0
+    (value * 10000.0).round() / 10000.0
 }
 
 #[cfg(test)]
