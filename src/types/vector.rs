@@ -170,6 +170,62 @@ impl fmt::Display for Vector2 {
     }
 }
 
+#[cfg(feature = "glam")]
+impl From<glam::Vec2> for Vector2 {
+    fn from(value: glam::Vec2) -> Self {
+        Self { x: value.x as f64, y: value.y as f64 }
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<Vector2> for glam::Vec2 {
+    fn from(value: Vector2) -> Self {
+        Self { x: value.x as f32, y: value.y as f32 }
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<glam::DVec2> for Vector2 {
+    fn from(value: glam::DVec2) -> Self {
+        Self { x: value.x, y: value.y }
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<Vector2> for glam::DVec2 {
+    fn from(value: Vector2) -> Self {
+        Self { x: value.x, y: value.y }
+    }
+}
+
+#[cfg(feature = "nalgebra")]
+impl From<nalgebra::Point2<f32>> for Vector2 {
+    fn from(value: nalgebra::Point2<f32>) -> Self {
+        Self { x: value.x as f64, y: value.y as f64 }
+    }
+}
+
+#[cfg(feature = "nalgebra")]
+impl From<Vector2> for nalgebra::Point2<f32> {
+    fn from(value: Vector2) -> Self {
+        Self::new(value.x as f32, value.y as f32)
+    }
+}
+
+#[cfg(feature = "nalgebra")]
+impl From<nalgebra::Point2<f64>> for Vector2 {
+    fn from(value: nalgebra::Point2<f64>) -> Self {
+        Self { x: value.x, y: value.y }
+    }
+}
+
+#[cfg(feature = "nalgebra")]
+impl From<Vector2> for nalgebra::Point2<f64> {
+    fn from(value: Vector2) -> Self {
+        Self::new(value.x, value.y)
+    }
+}
+
 as_serde_tuple! {
     #[allow(missing_docs)]
     /// Represents a 3D point in space.
@@ -320,6 +376,62 @@ impl fmt::Display for Vector3 {
     }
 }
 
+#[cfg(feature = "glam")]
+impl From<glam::Vec3> for Vector3 {
+    fn from(value: glam::Vec3) -> Self {
+        Self { x: value.x as f64, y: value.y as f64, z: value.z as f64 }
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<Vector3> for glam::Vec3 {
+    fn from(value: Vector3) -> Self {
+        Self { x: value.x as f32, y: value.y as f32, z: value.z as f32 }
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<glam::DVec3> for Vector3 {
+    fn from(value: glam::DVec3) -> Self {
+        Self { x: value.x, y: value.y, z: value.z }
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<Vector3> for glam::DVec3 {
+    fn from(value: Vector3) -> Self {
+        Self { x: value.x, y: value.y, z: value.z }
+    }
+}
+
+#[cfg(feature = "nalgebra")]
+impl From<nalgebra::Point3<f32>> for Vector3 {
+    fn from(value: nalgebra::Point3<f32>) -> Self {
+        Self { x: value.x as f64, y: value.y as f64, z: value.z as f64 }
+    }
+}
+
+#[cfg(feature = "nalgebra")]
+impl From<Vector3> for nalgebra::Point3<f32> {
+    fn from(value: Vector3) -> Self {
+        Self::new(value.x as f32, value.y as f32, value.z as f32)
+    }
+}
+
+#[cfg(feature = "nalgebra")]
+impl From<nalgebra::Point3<f64>> for Vector3 {
+    fn from(value: nalgebra::Point3<f64>) -> Self {
+        Self { x: value.x, y: value.y, z: value.z }
+    }
+}
+
+#[cfg(feature = "nalgebra")]
+impl From<Vector3> for nalgebra::Point3<f64> {
+    fn from(value: Vector3) -> Self {
+        Self::new(value.x, value.y, value.z)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -412,5 +524,57 @@ mod tests {
     fn test_vector2_angle_degree() {
         let vector = Vector2::new(20.0, 20.0);
         assert!(vector.angle_degrees() == 45.0);
+    }
+
+    #[cfg(feature = "glam")]
+    #[test]
+    fn test_glam_from_into() {
+        let v = Vector3::new(23.1, 5.0, 0.0);
+
+        let b: glam::DVec3 = v.into();
+        assert_eq!(b, glam::DVec3::new(23.1, 5.0, 0.0));
+
+        let c = Vector3::from(b);
+        assert_eq!(c, v);
+
+        let d: glam::Vec3 = c.into();
+        assert_eq!(d, glam::Vec3::new(23.1, 5.0, 0.0));
+
+        let v = Vector2::new(23.1, 5.0);
+
+        let b: glam::DVec2 = v.into();
+        assert_eq!(b, glam::DVec2::new(23.1, 5.0));
+
+        let c = Vector2::from(b);
+        assert_eq!(c, v);
+
+        let d: glam::Vec2 = c.into();
+        assert_eq!(d, glam::Vec2::new(23.1, 5.0));
+    }
+
+    #[cfg(feature = "nalgebra")]
+    #[test]
+    fn test_nalgebra_from_into() {
+        let v = Vector3::new(23.1, 5.0, 0.0);
+
+        let b: nalgebra::Point3<f64> = v.into();
+        assert_eq!(b, nalgebra::Point3::new(23.1, 5.0, 0.0));
+
+        let c = Vector3::from(b);
+        assert_eq!(c, v);
+
+        let d: nalgebra::Point3<f32> = c.into();
+        assert_eq!(d, nalgebra::Point3::new(23.1, 5.0, 0.0));
+
+        let v = Vector2::new(23.1, 5.0);
+
+        let b: nalgebra::Point2<f64> = v.into();
+        assert_eq!(b, nalgebra::Point2::new(23.1, 5.0));
+
+        let c = Vector2::from(b);
+        assert_eq!(c, v);
+
+        let d: nalgebra::Point2<f32> = c.into();
+        assert_eq!(d, nalgebra::Point2::new(23.1, 5.0));
     }
 }

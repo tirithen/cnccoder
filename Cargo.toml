@@ -11,6 +11,8 @@ keywords = ["cnc", "gcode", "grbl", "camotics"]
 default = ["filesystem", "doc-images"]
 filesystem = []
 doc-images = []
+glam = ["dep:glam"]
+nalgebra = ["dep:nalgebra"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -18,6 +20,8 @@ serde_json = "1"
 anyhow = "1"
 lazy_static = "1"
 embed-doc-image = "0.1"
+glam = { version = "0.22", optional = true }
+nalgebra = { version = "0.32", optional = true }
 
 [profile.release]
 opt-level = 's'

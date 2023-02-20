@@ -5,6 +5,6 @@ test:
     stage: test
     image: rust
     script:
-      - cargo test --verbose --features filesystem
+      - cargo test --verbose --all-features
     tags:
       - amd64

@@ -82,6 +82,7 @@ In this way you can easily simulate your projects.
 
 ## Whishlist for new features
 
+* Use thiserror with defined errors instead of anyhow.
 * More ready to use programs for the `programs/` module, such as, boxes,
   reusable wood joints.
 * WASM build and API, the current API is incompatible as it uses enum variants
@@ -122,7 +123,7 @@ calculated and the release changelog can be automatically generated.
 
 ## License
 
-Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or 
+Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or
 [MIT license](LICENSE-MIT) at your option.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
