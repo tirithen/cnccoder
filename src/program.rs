@@ -25,7 +25,7 @@
 //!         10.0,
 //!         Direction::Clockwise,
 //!         20000.0,
-//!         5000.0
+//!         5_000.0
 //!     );
 //!
 //!     program.extend(tool, |context| {
@@ -250,6 +250,18 @@ impl Program {
         }
     }
 
+    /// Creates a new empty `Program` with the same same settings as the supplied one.
+    #[must_use]
+    pub fn new_empty_from(program: &Program) -> Program {
+        Program {
+            z_safe: program.z_safe,
+            z_tool_change: program.z_tool_change,
+            units: program.units,
+            contexts: Arc::new(Mutex::new(HashMap::new())),
+            tool_ordering: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
     /// Returns the z safe value set for this context.
     ///
     /// The value indicates the z height where the machine tool can safely travel
@@ -354,7 +366,7 @@ impl Program {
     /// Merges another program into this program.
     ///
     /// Returns error if tool or units are not the same in both programs.
-    pub fn merge(&mut self, program: Program) -> Result<()> {
+    pub fn merge(&mut self, program: &Program) -> Result<()> {
         if self.units != program.units {
             return Err(anyhow!("Failed to merge due to mismatching units"));
         }
@@ -550,10 +562,62 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_new_program() {
+    fn test_program_new() {
         let program = Program::new(Units::Metric, 10.0, 50.0);
         assert_eq!(program.z_safe, 10.0);
         assert_eq!(program.z_tool_change, 50.0);
+    }
+
+    #[test]
+    fn test_program_empty() {
+        let mut program = Program::new(Units::Metric, 10.0, 50.0);
+
+        let tool = Tool::cylindrical(
+            Units::Metric,
+            50.0,
+            4.0,
+            Direction::Clockwise,
+            5_000.0,
+            400.0,
+        );
+
+        program.extend(tool, |context| {
+            context.append_cut(Cut::drill(Vector3::default(), -1.0));
+            Ok(())
+        }).unwrap();
+
+        assert_eq!(program.tools().len(), 1);
+        assert_eq!(program.to_instructions().unwrap(), vec![
+            Instruction::G17(G17 {}),
+            Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min".to_string() }),
+            Instruction::G21(G21 {}),
+            Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
+            Instruction::M5(M5 {}),
+            Instruction::M6(M6 { t: 1 }),
+            Instruction::S(S { x: 5_000.0 }),
+            Instruction::M3(M3 {}),
+            Instruction::Empty(Empty {}),
+            Instruction::Comment(Comment { text: "Drill hole at: x = 0, y = 0".to_string() }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
+            Instruction::G0(G0 { x: Some(0.0), y: Some(0.0), z: None }),
+            Instruction::G1(G1 { x: None, y: None, z: Some(-1.0), f: Some(400.0) }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
+            Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
+            Instruction::Empty(Empty {}),
+            Instruction::M2(M2 {}),
+        ]);
+
+        let other_program = Program::new_empty_from(&program);
+
+        assert_eq!(other_program.z_safe, 10.0);
+        assert_eq!(other_program.z_tool_change, 50.0);
+        assert_eq!(other_program.tools().len(), 0);
+        assert_eq!(other_program.to_instructions().unwrap(), vec![
+            Instruction::G17(G17 {}),
+            Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
+            Instruction::Empty(Empty {}),
+            Instruction::M2(M2 {}),
+        ]);
     }
 
     #[test]
@@ -565,7 +629,7 @@ mod tests {
             50.0,
             4.0,
             Direction::Clockwise,
-            5000.0,
+            5_000.0,
             400.0,
         );
 
@@ -574,7 +638,7 @@ mod tests {
             45.0,
             15.0,
             Direction::Clockwise,
-            5000.0,
+            5_000.0,
             400.0,
         );
 
@@ -623,7 +687,7 @@ mod tests {
             50.0,
             4.0,
             Direction::Clockwise,
-            5000.0,
+            5_000.0,
             400.0,
         );
 
@@ -632,7 +696,7 @@ mod tests {
             45.0,
             1.0,
             Direction::Clockwise,
-            5000.0,
+            5_000.0,
             400.0,
         );
 
@@ -670,7 +734,7 @@ mod tests {
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
             Instruction::M6(M6 { t: 1 }),
-            Instruction::S(S { x: 5000.0 }),
+            Instruction::S(S { x: 5_000.0 }),
             Instruction::M3(M3 {}),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 0, y = 0".to_string() }),
@@ -692,7 +756,7 @@ mod tests {
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
             Instruction::M6(M6 { t: 2 }),
-            Instruction::S(S { x: 5000.0 }),
+            Instruction::S(S { x: 5_000.0 }),
             Instruction::M3(M3 {}),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 5, y = 10".to_string() }),
@@ -726,7 +790,7 @@ mod tests {
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
             Instruction::M6(M6 { t: 1 }),
-            Instruction::S(S { x: 5000.0 }),
+            Instruction::S(S { x: 5_000.0 }),
             Instruction::M3(M3 {}),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 5, y = 10".to_string() }),
@@ -748,7 +812,7 @@ mod tests {
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
             Instruction::M6(M6 { t: 2 }),
-            Instruction::S(S { x: 5000.0 }),
+            Instruction::S(S { x: 5_000.0 }),
             Instruction::M3(M3 {}),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 0, y = 0".to_string() }),
@@ -781,7 +845,7 @@ mod tests {
             50.0,
             4.0,
             Direction::Clockwise,
-            5000.0,
+            5_000.0,
             400.0,
         );
 
@@ -790,7 +854,7 @@ mod tests {
             45.0,
             1.0,
             Direction::Clockwise,
-            5000.0,
+            5_000.0,
             400.0,
         );
 
@@ -834,7 +898,7 @@ mod tests {
             Ok(())
         })?;
 
-        program1.merge(program2)?;
+        program1.merge(&program2)?;
 
         let instructions = program1.to_instructions()?;
 
@@ -845,7 +909,7 @@ mod tests {
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
             Instruction::M6(M6 { t: 1 }),
-            Instruction::S(S { x: 5000.0 }),
+            Instruction::S(S { x: 5_000.0 }),
             Instruction::M3(M3 {}),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 0, y = 0".to_string() }),
@@ -881,7 +945,7 @@ mod tests {
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
             Instruction::M5(M5 {}),
             Instruction::M6(M6 { t: 2 }),
-            Instruction::S(S { x: 5000.0 }),
+            Instruction::S(S { x: 5_000.0 }),
             Instruction::M3(M3 {}),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 5, y = 10".to_string() }),
@@ -916,7 +980,7 @@ mod tests {
             50.0,
             4.0,
             Direction::Clockwise,
-            5000.0,
+            5_000.0,
             400.0,
         );
 
@@ -925,7 +989,7 @@ mod tests {
             45.0,
             1.0,
             Direction::Clockwise,
-            5000.0,
+            5_000.0,
             400.0,
         );
 
@@ -1022,7 +1086,7 @@ mod tests {
             50.0,
             4.0,
             Direction::Clockwise,
-            5000.0,
+            5_000.0,
             400.0,
         );
 
