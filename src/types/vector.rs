@@ -173,35 +173,50 @@ impl fmt::Display for Vector2 {
 #[cfg(feature = "glam")]
 impl From<glam::Vec2> for Vector2 {
     fn from(value: glam::Vec2) -> Self {
-        Self { x: value.x as f64, y: value.y as f64 }
+        Self {
+            x: value.x as f64,
+            y: value.y as f64,
+        }
     }
 }
 
 #[cfg(feature = "glam")]
 impl From<Vector2> for glam::Vec2 {
     fn from(value: Vector2) -> Self {
-        Self { x: value.x as f32, y: value.y as f32 }
+        Self {
+            x: value.x as f32,
+            y: value.y as f32,
+        }
     }
 }
 
 #[cfg(feature = "glam")]
 impl From<glam::DVec2> for Vector2 {
     fn from(value: glam::DVec2) -> Self {
-        Self { x: value.x, y: value.y }
+        Self {
+            x: value.x,
+            y: value.y,
+        }
     }
 }
 
 #[cfg(feature = "glam")]
 impl From<Vector2> for glam::DVec2 {
     fn from(value: Vector2) -> Self {
-        Self { x: value.x, y: value.y }
+        Self {
+            x: value.x,
+            y: value.y,
+        }
     }
 }
 
 #[cfg(feature = "nalgebra")]
 impl From<nalgebra::Point2<f32>> for Vector2 {
     fn from(value: nalgebra::Point2<f32>) -> Self {
-        Self { x: value.x as f64, y: value.y as f64 }
+        Self {
+            x: value.x as f64,
+            y: value.y as f64,
+        }
     }
 }
 
@@ -215,7 +230,10 @@ impl From<Vector2> for nalgebra::Point2<f32> {
 #[cfg(feature = "nalgebra")]
 impl From<nalgebra::Point2<f64>> for Vector2 {
     fn from(value: nalgebra::Point2<f64>) -> Self {
-        Self { x: value.x, y: value.y }
+        Self {
+            x: value.x,
+            y: value.y,
+        }
     }
 }
 
@@ -379,35 +397,55 @@ impl fmt::Display for Vector3 {
 #[cfg(feature = "glam")]
 impl From<glam::Vec3> for Vector3 {
     fn from(value: glam::Vec3) -> Self {
-        Self { x: value.x as f64, y: value.y as f64, z: value.z as f64 }
+        Self {
+            x: value.x as f64,
+            y: value.y as f64,
+            z: value.z as f64,
+        }
     }
 }
 
 #[cfg(feature = "glam")]
 impl From<Vector3> for glam::Vec3 {
     fn from(value: Vector3) -> Self {
-        Self { x: value.x as f32, y: value.y as f32, z: value.z as f32 }
+        Self {
+            x: value.x as f32,
+            y: value.y as f32,
+            z: value.z as f32,
+        }
     }
 }
 
 #[cfg(feature = "glam")]
 impl From<glam::DVec3> for Vector3 {
     fn from(value: glam::DVec3) -> Self {
-        Self { x: value.x, y: value.y, z: value.z }
+        Self {
+            x: value.x,
+            y: value.y,
+            z: value.z,
+        }
     }
 }
 
 #[cfg(feature = "glam")]
 impl From<Vector3> for glam::DVec3 {
     fn from(value: Vector3) -> Self {
-        Self { x: value.x, y: value.y, z: value.z }
+        Self {
+            x: value.x,
+            y: value.y,
+            z: value.z,
+        }
     }
 }
 
 #[cfg(feature = "nalgebra")]
 impl From<nalgebra::Point3<f32>> for Vector3 {
     fn from(value: nalgebra::Point3<f32>) -> Self {
-        Self { x: value.x as f64, y: value.y as f64, z: value.z as f64 }
+        Self {
+            x: value.x as f64,
+            y: value.y as f64,
+            z: value.z as f64,
+        }
     }
 }
 
@@ -421,7 +459,11 @@ impl From<Vector3> for nalgebra::Point3<f32> {
 #[cfg(feature = "nalgebra")]
 impl From<nalgebra::Point3<f64>> for Vector3 {
     fn from(value: nalgebra::Point3<f64>) -> Self {
-        Self { x: value.x, y: value.y, z: value.z }
+        Self {
+            x: value.x,
+            y: value.y,
+            z: value.z,
+        }
     }
 }
 

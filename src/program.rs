@@ -581,10 +581,12 @@ mod tests {
             400.0,
         );
 
-        program.extend(tool, |context| {
-            context.append_cut(Cut::drill(Vector3::default(), -1.0));
-            Ok(())
-        }).unwrap();
+        program
+            .extend(tool, |context| {
+                context.append_cut(Cut::drill(Vector3::default(), -1.0));
+                Ok(())
+            })
+            .unwrap();
 
         assert_eq!(program.tools().len(), 1);
         assert_eq!(program.to_instructions().unwrap(), vec![
@@ -612,12 +614,19 @@ mod tests {
         assert_eq!(other_program.z_safe, 10.0);
         assert_eq!(other_program.z_tool_change, 50.0);
         assert_eq!(other_program.tools().len(), 0);
-        assert_eq!(other_program.to_instructions().unwrap(), vec![
-            Instruction::G17(G17 {}),
-            Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
-            Instruction::Empty(Empty {}),
-            Instruction::M2(M2 {}),
-        ]);
+        assert_eq!(
+            other_program.to_instructions().unwrap(),
+            vec![
+                Instruction::G17(G17 {}),
+                Instruction::G0(G0 {
+                    x: None,
+                    y: None,
+                    z: Some(50.0)
+                }),
+                Instruction::Empty(Empty {}),
+                Instruction::M2(M2 {}),
+            ]
+        );
     }
 
     #[test]
