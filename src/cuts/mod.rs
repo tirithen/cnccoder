@@ -48,8 +48,8 @@ impl Cut {
     pub fn circle(start: Vector3, end_z: f64, radius: f64, max_step_z: f64) -> Self {
         Self::Circle(Circle::new(
             start,
-            end_z,
             radius,
+            end_z,
             max_step_z,
             ToolPathCompensation::None,
         ))
@@ -61,8 +61,8 @@ impl Cut {
     pub fn circle_inner(start: Vector3, end_z: f64, radius: f64, max_step_z: f64) -> Self {
         Self::Circle(Circle::new(
             start,
-            end_z,
             radius,
+            end_z,
             max_step_z,
             ToolPathCompensation::Inner,
         ))
@@ -74,8 +74,8 @@ impl Cut {
     pub fn circle_outer(start: Vector3, end_z: f64, radius: f64, max_step_z: f64) -> Self {
         Self::Circle(Circle::new(
             start,
-            end_z,
             radius,
+            end_z,
             max_step_z,
             ToolPathCompensation::Outer,
         ))
