@@ -98,13 +98,16 @@ impl Area {
     pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let tool_radius = context.tool().radius();
         let tool_diameter = context.tool().diameter();
+        let tool_units = context.tool().units();
 
         if self.size.x < tool_diameter {
-            return Err(anyhow!("Unable to plane area, tool is {} mm to wider than x dimension (tool diameter is {} mm)", tool_diameter - self.size.x, tool_diameter));
+            // TODO: handle calculation for the case when tool and program units are different.
+            return Err(anyhow!("Unable to plane area, tool is {:.2} {} to wider than x dimension (tool diameter is {:.2} {})", tool_diameter - self.size.x, tool_units, tool_diameter, tool_units));
         }
 
         if self.size.y < tool_diameter {
-            return Err(anyhow!("Unable to plane area, tool is {} mm to wider than y dimension (tool diameter is {} mm)", tool_diameter - self.size.y, tool_diameter));
+            // TODO: handle calculation for the case when tool and program units are different.
+            return Err(anyhow!("Unable to plane area, tool is {:.2} {} to wider than y dimension (tool diameter is {:.2} {})", tool_diameter - self.size.y, tool_units, tool_diameter, tool_units));
         }
 
         let start = match self.compensation {

@@ -79,10 +79,11 @@ impl Circle {
     pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
         let mut instructions = vec![];
 
+        let tool_radius = context.tool().radius();
         let cut_radius = match self.compensation {
             ToolPathCompensation::None => self.radius,
-            ToolPathCompensation::Inner => self.radius - context.tool().radius(),
-            ToolPathCompensation::Outer => self.radius + context.tool().radius(),
+            ToolPathCompensation::Inner => self.radius - tool_radius,
+            ToolPathCompensation::Outer => self.radius + tool_radius,
         };
 
         if (0.0..0.001).contains(&cut_radius) {
@@ -196,10 +197,16 @@ impl Circle {
                 z: Some(context.z_safe()),
             }));
         } else {
+            let tool = context.tool();
+            let units = context.units();
+
+            // TODO: handle calculation for the case when tool and program units are different.
             return Err(anyhow!(
-                "Unable to cut circle, tool is {} mm to wide (tool diameter is {} mm).",
+                "Unable to cut circle of diameter {:.2} {} with tool diameter {:.2} {}.",
                 cut_radius.abs() * 2.0,
-                context.tool().diameter()
+                units,
+                tool.diameter(),
+                units,
             ));
         }
 

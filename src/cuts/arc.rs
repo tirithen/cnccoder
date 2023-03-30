@@ -86,7 +86,7 @@ impl Arc {
 
         if (distance_from - distance_to).abs() > 0.0001 {
             return Err(anyhow!(
-                "Arc distances from/center ({} {}) and to/center ({} {}) must be equal",
+                "Arc distances from/center ({:.2} {}) and to/center ({:.2} {}) must be equal",
                 distance_from,
                 context.units(),
                 distance_to,
