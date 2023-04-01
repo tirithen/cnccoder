@@ -35,7 +35,7 @@ doc = ::embed_doc_image::embed_image!("cylindrical-tool", "doc-assets/cylindrica
 
 use std::{
     fmt,
-    hash::{Hash, Hasher},
+    hash::{Hash, Hasher}, collections::HashMap,
 };
 
 use serde::{Deserialize, Serialize};
@@ -262,7 +262,7 @@ impl fmt::Display for Ballnose {
 
         write!(
             formatter,
-            "Ballnose tool diameter = {} {}, length = {} {}, direction = {}, spindle_speed = {} rpm, feed_rate = {} {}/min",
+            "Ballnose tool diameter = {}{}, length = {}{}, direction = {}, spindle_speed = {} rpm, feed_rate = {}{}/min",
             round_precision(self.diameter),
             units,
             round_precision(self.length),
@@ -370,7 +370,7 @@ impl fmt::Display for Conical {
 
         write!(
             formatter,
-            "Conical tool angle = {}°, diameter = {} {}, length = {} {}, direction = {}, spindle_speed = {} rpm, feed_rate = {} {}/min",
+            "Conical tool angle = {}°, diameter = {}{}, length = {}{}, direction = {}, spindle_speed = {} rpm, feed_rate = {}{}/min",
             round_precision(self.angle),
             round_precision(self.diameter),
             units,
@@ -477,7 +477,7 @@ impl fmt::Display for Cylindrical {
 
         write!(
             formatter,
-            "Cylindrical tool diameter = {} {}, length = {} {}, direction = {}, spindle_speed = {} rpm, feed_rate = {} {}/min",
+            "Cylindrical tool diameter = {}{}, length = {}{}, direction = {}, spindle_speed = {} rpm, feed_rate = {}{}/min",
             round_precision(self.diameter),
             units,
             round_precision(self.length),
@@ -511,5 +511,141 @@ impl Hash for Cylindrical {
         self.direction.hash(state);
         self.spindle_speed.to_bits().hash(state);
         self.feed_rate.to_bits().hash(state);
+    }
+}
+
+/// Keeps a list of tools and their order. It also allows for manipulating the order of the tools to ease choosing which cuts that should be made first.
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
+pub struct ToolOrdering {
+    tools: Vec<Tool>,
+    ordering: HashMap<Tool, u8>,
+    explicit_ordering: HashMap<Tool, u8>,
+}
+
+impl ToolOrdering {
+    fn next_auto_order(&self) -> u8 {
+        let mut next_order = 1;
+
+        while self
+            .ordering
+            .values()
+            .chain(self.explicit_ordering.values())
+            .any(|&order| order == next_order)
+        {
+            next_order += 1;
+        }
+
+        next_order
+    }
+
+    /// Adds a tool and automatically assign the first available order to the tool and its related cuts.
+    pub fn auto_ordering(&mut self, tool: &Tool) {
+        if self.ordering.contains_key(tool) {
+            return;
+        }
+
+        self.tools.push(*tool);
+        self.ordering.insert(*tool, self.next_auto_order());
+    }
+
+    /// Adds a tool and assign a specific order to the tool and its related cuts. The minimum order value is 1.
+    pub fn set_ordering(&mut self, tool: &Tool, order: u8) {
+        let order = if order == 0 { 1 } else { order };
+
+        self.tools.push(*tool);
+        self.explicit_ordering.retain(|t, o| *o != order || t == tool);
+        self.explicit_ordering.insert(*tool, order);
+
+        self.ordering.clear();
+
+        self.explicit_ordering.iter().for_each(|(t, &o)| {
+            self.ordering.insert(*t, o);
+        });
+
+        for tool in &self.tools {
+            if !self.ordering.contains_key(tool) {
+                self.ordering.insert(*tool, self.next_auto_order());
+            }
+        }
+    }
+
+    /// Returns the order of the tool and its related cuts, returns None if the tool has not been added.
+    pub fn ordering(&self, tool: &Tool) -> Option<u8> {
+        self.ordering.get(tool).copied()
+    }
+
+    /// Returns an ordered list of the tools added.
+    pub fn tools_ordered(&self) -> Vec<Tool> {
+        let mut tools = vec![];
+
+        let tool_ordering = &self.ordering;
+        let mut orderings: Vec<_> = tool_ordering.iter().collect();
+        orderings.sort_by(|a, b| a.1.cmp(b.1));
+
+        for (tool, _) in orderings {
+            tools.push(*tool);
+        }
+
+        tools
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_auto_ordering() {
+        let mut tool_ordering = ToolOrdering::default();
+
+        let tool1 = Tool::conical(Units::Metric, 30.0, 6.0, Direction::Clockwise, 10000.0, 500.0);
+        let tool2 = Tool::cylindrical(Units::Metric, 30.0, 2.0, Direction::Clockwise, 10000.0, 500.0);
+
+        tool_ordering.auto_ordering(&tool1);
+        tool_ordering.auto_ordering(&tool2);
+
+        assert_eq!(tool_ordering.ordering(&tool1), Some(1));
+        assert_eq!(tool_ordering.ordering(&tool2), Some(2));
+        assert_ne!(tool_ordering.ordering(&tool1), tool_ordering.ordering(&tool2));
+    }
+
+    #[test]
+    fn test_set_ordering() {
+        let mut tool_ordering = ToolOrdering::default();
+
+        let tool1 = Tool::conical(Units::Metric, 45.0, 6.0, Direction::Clockwise, 10000.0, 500.0);
+        let tool2 = Tool::cylindrical(Units::Metric, 20.0, 4.0, Direction::Clockwise, 10000.0, 500.0);
+
+        tool_ordering.set_ordering(&tool1, 1);
+        tool_ordering.set_ordering(&tool2, 2);
+
+        assert_eq!(tool_ordering.ordering(&tool1), Some(1));
+        assert_eq!(tool_ordering.ordering(&tool2), Some(2));
+
+        tool_ordering.set_ordering(&tool1, 3);
+
+        assert_eq!(tool_ordering.ordering(&tool1), Some(3));
+        assert_eq!(tool_ordering.ordering(&tool2), Some(2));
+    }
+
+    #[test]
+    fn test_mix_set_and_auto_ordering() {
+        let mut tool_ordering = ToolOrdering::default();
+
+        let tool1 = Tool::conical(Units::Metric, 30.0, 4.0, Direction::Clockwise, 10000.0, 500.0);
+        let tool2 = Tool::ballnose(Units::Metric, 20.0, 1.0, Direction::Clockwise, 10000.0, 500.0);
+        let tool3 = Tool::cylindrical(Units::Metric, 32.0, 2.0, Direction::Clockwise, 10000.0, 500.0);
+
+        tool_ordering.auto_ordering(&tool1);
+        tool_ordering.set_ordering(&tool2, 1);
+        tool_ordering.auto_ordering(&tool3);
+
+        assert_eq!(tool_ordering.ordering(&tool1), Some(2));
+        assert_eq!(tool_ordering.ordering(&tool2), Some(1));
+        assert_eq!(tool_ordering.ordering(&tool3), Some(3));
+
+        assert_ne!(tool_ordering.ordering(&tool1), tool_ordering.ordering(&tool2));
+        assert_ne!(tool_ordering.ordering(&tool1), tool_ordering.ordering(&tool3));
+        assert_ne!(tool_ordering.ordering(&tool2), tool_ordering.ordering(&tool3));
     }
 }

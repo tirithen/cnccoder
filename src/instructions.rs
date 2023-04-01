@@ -388,7 +388,7 @@ impl M5 {
 #[derive(Debug, Clone, PartialEq)]
 pub struct M6 {
     /// Tool number
-    pub t: u32,
+    pub t: u8,
 }
 
 impl M6 {
@@ -410,7 +410,7 @@ impl Empty {
 }
 
 /// Comment
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Comment {
     /// Comment
     pub text: String,
@@ -419,6 +419,10 @@ pub struct Comment {
 impl Comment {
     /// Generate G-code string
     pub fn to_gcode(&self) -> String {
+        if self.text.is_empty() {
+            return String::new();
+        }
+
         format!(";({})", self.text)
     }
 }

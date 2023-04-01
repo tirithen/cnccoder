@@ -28,7 +28,7 @@
 //!         5_000.0
 //!     );
 //!
-//!     program.extend(tool, |context| {
+//!     program.extend(&tool, |context| {
 //!         context.append_cut(Cut::plane(
 //!             Vector3::new(0.0, 0.0, 3.0),
 //!             Vector2::new(100.0, 100.0),
@@ -108,10 +108,10 @@ pub struct Context {
 
 impl Context {
     /// Creates a new `Context` struct.
-    pub fn new(units: Units, tool: Tool, z_safe: f64, z_tool_change: f64) -> Self {
+    pub fn new(units: Units, tool: &Tool, z_safe: f64, z_tool_change: f64) -> Self {
         Self {
             units,
-            tool,
+            tool: *tool,
             z_safe,
             z_tool_change,
             operations: vec![],
@@ -234,7 +234,7 @@ pub struct Program {
     z_tool_change: f64,
     units: Units,
     contexts: Arc<Mutex<HashMap<Tool, Arc<Mutex<Context>>>>>,
-    tool_ordering: Arc<Mutex<HashMap<Tool, u32>>>,
+    tool_ordering: Arc<Mutex<ToolOrdering>>,
 }
 
 impl Program {
@@ -246,7 +246,7 @@ impl Program {
             z_tool_change,
             units,
             contexts: Arc::new(Mutex::new(HashMap::new())),
-            tool_ordering: Arc::new(Mutex::new(HashMap::new())),
+            tool_ordering: Arc::new(Mutex::new(ToolOrdering::default())),
         }
     }
 
@@ -258,7 +258,7 @@ impl Program {
             z_tool_change: program.z_tool_change,
             units: program.units,
             contexts: Arc::new(Mutex::new(HashMap::new())),
-            tool_ordering: Arc::new(Mutex::new(HashMap::new())),
+            tool_ordering: Arc::new(Mutex::new(ToolOrdering::default())),
         }
     }
 
@@ -280,43 +280,26 @@ impl Program {
     /// Returns the tools position in a program, this number will then be used in the G-code T commands
     /// (T1 is the first tool, T2 is the second tool and so on).
     #[must_use]
-    pub fn tool_ordering(&self, tool: Tool) -> Option<u32> {
-        if let Some(ordering) = self.tool_ordering.lock().unwrap().get(&tool) {
-            return Some(*ordering);
-        }
-
-        None
+    pub fn tool_ordering(&self, tool: &Tool) -> Option<u8> {
+        let tool_ordering = self.tool_ordering.lock().unwrap();
+        tool_ordering.ordering(tool)
     }
 
     /// Allows setting the positional order for a tool, this will also automatically increment the position
     /// of any tools that comes after the newly repositioned tool, resolving any ordering conflicts.
-    pub fn set_tool_ordering(&self, tool: Tool, ordering: u32) {
+    pub fn set_tool_ordering(&self, tool: &Tool, ordering: u8) {
         let mut tool_ordering = self.tool_ordering.lock().unwrap();
-
-        for (it_tool, it_ordering) in tool_ordering.iter_mut() {
-            if *it_tool != tool && *it_ordering >= ordering {
-                *it_ordering += 1;
-            }
-        }
-
-        tool_ordering.insert(tool, ordering);
+        tool_ordering.set_ordering(tool, ordering);
     }
 
-    fn create_context_if_missing_for_tool(&mut self, tool: Tool) {
+    fn create_context_if_missing_for_tool(&mut self, tool: &Tool) {
         let mut contexts = self.contexts.lock().unwrap();
-        if let Vacant(entry) = contexts.entry(tool) {
+        if let Vacant(entry) = contexts.entry(*tool) {
             let context = Context::new(self.units, tool, self.z_safe, self.z_tool_change);
             entry.insert(Arc::new(Mutex::new(context)));
 
-            // Set tool ordering
             let mut tool_ordering = self.tool_ordering.lock().unwrap();
-            let mut max_ordering = 0;
-            for ordering in tool_ordering.values() {
-                if *ordering > max_ordering {
-                    max_ordering = *ordering;
-                }
-            }
-            tool_ordering.insert(tool, max_ordering + 1);
+            tool_ordering.auto_ordering(tool);
         }
     }
 
@@ -333,7 +316,7 @@ impl Program {
     ///     let tool = Tool::default();
     ///
     ///     // Extend the program with new cuts
-    ///     program.extend(tool, |context| {
+    ///     program.extend(&tool, |context| {
     ///         // Append the planing cuts to the cylindrical tool context
     ///         context.append_cut(Cut::plane(
     ///             // Start at the x 0 mm, y 0 mm, z 3 mm coordinates
@@ -352,13 +335,13 @@ impl Program {
     ///     Ok(())
     /// }
     /// ```
-    pub fn extend<Action>(&mut self, tool: Tool, action: Action) -> Result<()>
+    pub fn extend<Action>(&mut self, tool: &Tool, action: Action) -> Result<()>
     where
         Action: Fn(&mut Context) -> Result<()>,
     {
         self.create_context_if_missing_for_tool(tool);
         let mut locked_contexts = self.contexts.lock().unwrap();
-        let context = locked_contexts.get_mut(&tool).unwrap();
+        let context = locked_contexts.get_mut(tool).unwrap();
         let locked_context = &mut context.lock().unwrap();
         action(locked_context)
     }
@@ -375,7 +358,7 @@ impl Program {
         self.z_tool_change = self.z_tool_change.min(program.z_tool_change);
 
         for tool in program.tools() {
-            self.create_context_if_missing_for_tool(tool);
+            self.create_context_if_missing_for_tool(&tool);
         }
 
         let program_contexts = program.contexts.lock().unwrap();
@@ -393,17 +376,8 @@ impl Program {
     /// Returns an ordered vec with all tools used by a program.
     #[must_use]
     pub fn tools(&self) -> Vec<Tool> {
-        let mut tools = vec![];
-
         let tool_ordering = self.tool_ordering.lock().unwrap();
-        let mut orderings: Vec<_> = tool_ordering.iter().collect();
-        orderings.sort_by(|a, b| a.1.cmp(b.1));
-
-        for (tool, _) in orderings {
-            tools.push(*tool);
-        }
-
-        tools
+        tool_ordering.tools_ordered()
     }
 
     /// Returns the bounds of the program.
@@ -462,11 +436,9 @@ impl Program {
         for tool in tools {
             if let Some(context) = contexts.get(&tool) {
                 let locked_context = &mut context.lock().unwrap();
-                let tool_number = self.tool_ordering(tool).unwrap();
+                let tool_number = self.tool_ordering(&tool).unwrap();
 
-                if tool_number > 1 {
-                    raw_instructions.push(Instruction::Empty(Empty {}));
-                }
+                raw_instructions.push(Instruction::Empty(Empty {}));
 
                 // Tool change
                 raw_instructions.append(&mut vec![
@@ -552,7 +524,7 @@ impl Default for Program {
             z_tool_change: 100.0,
             units: Units::default(),
             contexts: Arc::new(Mutex::new(HashMap::new())),
-            tool_ordering: Arc::new(Mutex::new(HashMap::new())),
+            tool_ordering: Arc::new(Mutex::new(ToolOrdering::default())),
         }
     }
 }
@@ -582,7 +554,7 @@ mod tests {
         );
 
         program
-            .extend(tool, |context| {
+            .extend(&tool, |context| {
                 context.append_cut(Cut::drill(Vector3::default(), -1.0));
                 Ok(())
             })
@@ -591,6 +563,7 @@ mod tests {
         assert_eq!(program.tools().len(), 1);
         assert_eq!(program.to_instructions().unwrap(), vec![
             Instruction::G17(G17 {}),
+            Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
@@ -651,7 +624,7 @@ mod tests {
             400.0,
         );
 
-        program.extend(tool1, |context| {
+        program.extend(&tool1, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(0.0, 0.0, 3.0),
                 vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
@@ -662,7 +635,7 @@ mod tests {
             Ok(())
         })?;
 
-        program.extend(tool2, |context| {
+        program.extend(&tool2, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(5.0, 10.0, 3.0),
                 vec![Segment::line(
@@ -679,7 +652,7 @@ mod tests {
         let tools = program.tools();
         assert_eq!(tools, vec![tool1, tool2]);
 
-        program.set_tool_ordering(tool2, 0);
+        program.set_tool_ordering(&tool2, 0);
 
         let tools = program.tools();
         assert_eq!(tools, vec![tool2, tool1]);
@@ -709,7 +682,7 @@ mod tests {
             400.0,
         );
 
-        program.extend(tool1, |context| {
+        program.extend(&tool1, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(0.0, 0.0, 3.0),
                 vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
@@ -720,7 +693,7 @@ mod tests {
             Ok(())
         })?;
 
-        program.extend(tool2, |context| {
+        program.extend(&tool2, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(5.0, 10.0, 3.0),
                 vec![Segment::line(
@@ -738,6 +711,7 @@ mod tests {
 
         let expected_output = vec![
             Instruction::G17(G17 {}),
+            Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
@@ -788,12 +762,13 @@ mod tests {
 
         assert_eq!(instructions, expected_output);
 
-        program.set_tool_ordering(tool2, 1);
+        program.set_tool_ordering(&tool2, 1);
 
         let instructions = program.to_instructions()?;
 
         let expected_output = vec![
             Instruction::G17(G17 {}),
+            Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400\"/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
@@ -869,7 +844,7 @@ mod tests {
 
         let mut program1 = Program::new(Units::Metric, 10.0, 40.0);
 
-        program1.extend(tool1, |context| {
+        program1.extend(&tool1, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(0.0, 0.0, 3.0),
                 vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
@@ -882,7 +857,7 @@ mod tests {
 
         let mut program2 = Program::new(Units::Metric, 5.0, 50.0);
 
-        program2.extend(tool1, |context| {
+        program2.extend(&tool1, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(10.0, 10.0, 3.0),
                 vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
@@ -893,7 +868,7 @@ mod tests {
             Ok(())
         })?;
 
-        program2.extend(tool2, |context| {
+        program2.extend(&tool2, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(5.0, 10.0, 3.0),
                 vec![Segment::line(
@@ -913,6 +888,7 @@ mod tests {
 
         let expected_output = vec![
             Instruction::G17(G17 {}),
+            Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min".to_string() }),
             Instruction::G21(G21 {}),
             Instruction::G0(G0 { x: None, y: None, z: Some(50.0) }),
@@ -1002,7 +978,7 @@ mod tests {
             400.0,
         );
 
-        program.extend(tool1, |context| {
+        program.extend(&tool1, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(0.0, 0.0, 3.0),
                 vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
@@ -1013,7 +989,7 @@ mod tests {
             Ok(())
         })?;
 
-        program.extend(tool2, |context| {
+        program.extend(&tool2, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(5.0, 10.0, 3.0),
                 vec![Segment::line(
@@ -1027,12 +1003,13 @@ mod tests {
             Ok(())
         })?;
 
-        program.set_tool_ordering(tool2, 1);
+        program.set_tool_ordering(&tool2, 0);
 
         let gcode = program.to_gcode()?;
 
         let expected_output = vec![
             "G17".to_string(),
+            "".to_string(),
             ";(Tool change: Conical tool angle = 45°, diameter = 1\", length = 1.2071\", direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400\"/min)".to_string(),
             "G20".to_string(),
             "G0 Z50".to_string(),
@@ -1099,7 +1076,7 @@ mod tests {
             400.0,
         );
 
-        program.extend(tool, |context| {
+        program.extend(&tool, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(0.0, 0.0, 3.0),
                 vec![Segment::line(

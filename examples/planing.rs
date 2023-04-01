@@ -18,7 +18,7 @@ fn main() -> Result<()> {
     );
 
     // Extend the program with the planing cuts
-    program.extend(tool, |context| {
+    program.extend(&tool, |context| {
         // Append the planing cuts to the cylindrical tool context
         context.append_cut(Cut::plane(
             // Start at the x 0 mm, y 0 mm, z 3 mm coordinates
@@ -37,7 +37,7 @@ fn main() -> Result<()> {
     // Write the G-code (for CNC) `planing.gcode` and Camotics project file
     // `planing.camotics` (for simulation) to disk using a resolution value
     // of 0.5 for the Camotics simulation.
-    write_project("planing", program, 0.5)?;
+    write_project("planing", &program, 0.5)?;
 
     Ok(())
 }

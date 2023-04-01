@@ -64,7 +64,7 @@ pub struct CamoticsTool {
     /// Cutter diameter of the tool
     pub diameter: f64,
     /// The tool number/identifier
-    pub number: u32,
+    pub number: u8,
     /// The shape of the tool
     pub shape: CamoticsToolShape,
 }
@@ -72,7 +72,7 @@ pub struct CamoticsTool {
 impl CamoticsTool {
     /// Creates a new `CamoticsTool` from a program [Tool](../tools/enum.Tool.html).
     #[must_use]
-    pub fn from_tool(tool: Tool, number: u32) -> Self {
+    pub fn from_tool(tool: Tool, number: u8) -> Self {
         match tool {
             Tool::Cylindrical(t) => CamoticsTool {
                 units: t.units,
@@ -127,7 +127,7 @@ pub struct Camotics {
     /// Tools used in the project, when using
     /// [Camotics::from_program](struct.Camotics.html#method.new) the
     /// program tools passed in will be converted to `CamoticsTool` instances.
-    pub tools: HashMap<u32, CamoticsTool>,
+    pub tools: HashMap<u8, CamoticsTool>,
     /// The size of the workpiece for the project.
     pub workpiece: Workpiece,
     /// The G-code files used by this project. When using
@@ -137,14 +137,12 @@ pub struct Camotics {
 }
 
 impl Camotics {
-    /// Creates a new `Camotics` project struct from a name, program tools, bounds, and resolution.
+    /// Creates a new `Camotics` project struct from a name, program tools with ordering, bounds, and resolution.
     #[must_use]
-    pub fn new(name: &str, tools: Vec<Tool>, workpiece: Bounds, resolution: f64) -> Self {
+    pub fn new(name: &str, tools: &HashMap<Tool, u8>, workpiece: Bounds, resolution: f64) -> Self {
         let mut tools_map = HashMap::new();
-
-        for (index, tool) in tools.iter().enumerate() {
-            let number = (index + 1) as u32;
-            tools_map.insert(number, CamoticsTool::from_tool(*tool, number));
+        for (index, (tool, number)) in tools.iter().enumerate() {
+            tools_map.insert(*number, CamoticsTool::from_tool(*tool, *number));
         }
 
         Self {
@@ -164,10 +162,15 @@ impl Camotics {
 
     /// Creates a new `Camotics` struct from a name, program, and resolution.
     #[must_use]
-    pub fn from_program(name: &str, program: Program, resolution: f64) -> Self {
-        let tools = program.tools();
+    pub fn from_program(name: &str, program: &Program, resolution: f64) -> Self {
+        let mut tools = HashMap::new();
+
+        for tool in program.tools() {
+            tools.insert(tool, program.tool_ordering(&tool).unwrap());
+        }
+
         let workpiece = program.bounds();
-        Self::new(name, tools, workpiece, resolution)
+        Self::new(name, &tools, workpiece, resolution)
     }
 
     /// Serializes the Camotics struct to the JSON format used by the Camotics
@@ -276,7 +279,7 @@ mod tests {
             400.0,
         );
 
-        program.extend(tool, |context| {
+        program.extend(&tool, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(0.0, 0.0, 3.0),
                 vec![Segment::line(
@@ -301,7 +304,7 @@ mod tests {
             Ok(())
         })?;
 
-        let camotics = Camotics::from_program("test-project", program.clone(), 1.0);
+        let camotics = Camotics::from_program("test-project", &program, 1.0);
 
         let mut tools = HashMap::new();
         tools.insert(1, CamoticsTool::from_tool(tool, 1));

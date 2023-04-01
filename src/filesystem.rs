@@ -29,7 +29,7 @@ use crate::{camotics::*, program::*};
 ///         5000.0
 ///     );
 ///
-///     program.extend(tool, |context| {
+///     program.extend(&tool, |context| {
 ///         context.append_cut(Cut::plane(
 ///             Vector3::new(0.0, 0.0, 3.0),
 ///             Vector2::new(100.0, 100.0),
@@ -45,8 +45,8 @@ use crate::{camotics::*, program::*};
 ///     Ok(())
 /// }
 /// ```
-pub fn write_project(name: &str, program: Program, camotics_resolution: f64) -> Result<()> {
-    let camotics = Camotics::from_program(name, program.clone(), camotics_resolution);
+pub fn write_project(name: &str, program: &Program, camotics_resolution: f64) -> Result<()> {
+    let camotics = Camotics::from_program(name, program, camotics_resolution);
     let gcode = program.to_gcode()?;
 
     let mut camotics_file = File::create(format!("{}.camotics", name))?;
@@ -84,7 +84,7 @@ mod tests {
             400.0,
         );
 
-        program.extend(tool, |context| {
+        program.extend(&tool, |context| {
             context.append_cut(Cut::path(
                 Vector3::new(0.0, 0.0, 3.0),
                 vec![Segment::line(
@@ -109,7 +109,7 @@ mod tests {
             Ok(())
         })?;
 
-        write_project("test-temp", program, 0.5)?;
+        write_project("test-temp", &program, 0.5)?;
 
         let camotics: Value = serde_json::from_str(&read_to_string("test-temp.camotics")?)?;
         remove_file("test-temp.camotics")?;
@@ -156,6 +156,7 @@ mod tests {
         remove_file("test-temp.gcode")?;
 
         assert_eq!(gcode, r#"G17
+
 ;(Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min)
 G21
 G0 Z50

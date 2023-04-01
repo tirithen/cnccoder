@@ -41,7 +41,7 @@ pub fn planing(tool: Tool, measurements: PlaningMeasurements) -> Result<Program>
         measurements.z_start + measurements.units.measurement_from_mm(50.0),
     );
 
-    program.extend(tool, |context| {
+    program.extend(&tool, |context| {
         context.append_cut(Cut::plane(
             Vector3::new(-tool.radius(), -tool.radius(), measurements.z_start),
             Vector2::new(

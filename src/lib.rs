@@ -40,7 +40,7 @@
 //!     );
 //!
 //!     // Extend the program with the planing cuts
-//!     program.extend(tool, |context| {
+//!     program.extend(&tool, |context| {
 //!         // Append the planing cuts to the cylindrical tool context
 //!         context.append_cut(Cut::plane(
 //!             // Start at the x 0 mm, y 0 mm, z 3 mm coordinates
