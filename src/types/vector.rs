@@ -113,6 +113,22 @@ impl Vector2 {
         vector.y += value;
         vector
     }
+
+    /// Returns a new `Vector2` setting the x coordinate to the given value.
+    #[must_use]
+    pub fn with_x(&self, value: f64) -> Self {
+        let mut vector = *self;
+        vector.x = value;
+        vector
+    }
+
+    /// Returns a new `Vector2` setting the y coordinate to the given value.
+    #[must_use]
+    pub fn with_y(&self, value: f64) -> Self {
+        let mut vector = *self;
+        vector.y = value;
+        vector
+    }
 }
 
 impl Add for Vector2 {
@@ -330,6 +346,30 @@ impl Vector3 {
     pub fn add_z(&self, value: f64) -> Self {
         let mut vector = *self;
         vector.z += value;
+        vector
+    }
+
+    /// Returns a new `Vector3` setting the x coordinate to the given value.
+    #[must_use]
+    pub fn with_x(&self, value: f64) -> Self {
+        let mut vector = *self;
+        vector.x = value;
+        vector
+    }
+
+    /// Returns a new `Vector3` setting the y coordinate to the given value.
+    #[must_use]
+    pub fn with_y(&self, value: f64) -> Self {
+        let mut vector = *self;
+        vector.y = value;
+        vector
+    }
+
+    /// Returns a new `Vector3` setting the z coordinate to the given value.
+    #[must_use]
+    pub fn with_z(&self, value: f64) -> Self {
+        let mut vector = *self;
+        vector.z = value;
         vector
     }
 }
