@@ -22,7 +22,8 @@ CNC machines using the [Grbl](https://github.com/gnea/grbl) controller.
 ## Usage example
 
 Example of a simple planing program (from `examples/planing.rs`):
-```
+
+```rust
 use anyhow::Result;
 use cnccoder::prelude::*;
 
