@@ -40,7 +40,7 @@ use crate::{camotics::*, program::*};
 ///         Ok(())
 ///     })?;
 ///
-///     write_project("planing", program, 0.5)?;
+///     write_project("planing", &program, 0.5)?;
 ///
 ///     Ok(())
 /// }

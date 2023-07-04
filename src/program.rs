@@ -41,7 +41,7 @@
 //!
 //!     println!("G-code: {}", program.to_gcode()?);
 //!
-//!     write_project("planing", program, 0.5)?;
+//!     write_project("planing", &program, 0.5)?;
 //!
 //!     Ok(())
 //! }

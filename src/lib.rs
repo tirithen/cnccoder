@@ -59,7 +59,7 @@
 //!     // Write the G-code (for CNC) `planing.gcode` and Camotics project file
 //!     // `planing.camotics` (for simulation) to disk using a resolution value
 //!     // of 0.5 for the Camotics simulation.
-//!     write_project("planing", program, 0.5)?;
+//!     write_project("planing", &program, 0.5)?;
 //!
 //!     Ok(())
 //! }
