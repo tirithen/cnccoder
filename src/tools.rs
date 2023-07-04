@@ -34,8 +34,9 @@ doc = ::embed_doc_image::embed_image!("cylindrical-tool", "doc-assets/cylindrica
 //! ```
 
 use std::{
+    collections::HashMap,
     fmt,
-    hash::{Hash, Hasher}, collections::HashMap,
+    hash::{Hash, Hasher},
 };
 
 use serde::{Deserialize, Serialize};
@@ -553,7 +554,8 @@ impl ToolOrdering {
         let order = if order == 0 { 1 } else { order };
 
         self.tools.push(*tool);
-        self.explicit_ordering.retain(|t, o| *o != order || t == tool);
+        self.explicit_ordering
+            .retain(|t, o| *o != order || t == tool);
         self.explicit_ordering.insert(*tool, order);
 
         self.ordering.clear();
@@ -598,23 +600,54 @@ mod tests {
     fn test_auto_ordering() {
         let mut tool_ordering = ToolOrdering::default();
 
-        let tool1 = Tool::conical(Units::Metric, 30.0, 6.0, Direction::Clockwise, 10000.0, 500.0);
-        let tool2 = Tool::cylindrical(Units::Metric, 30.0, 2.0, Direction::Clockwise, 10000.0, 500.0);
+        let tool1 = Tool::conical(
+            Units::Metric,
+            30.0,
+            6.0,
+            Direction::Clockwise,
+            10000.0,
+            500.0,
+        );
+        let tool2 = Tool::cylindrical(
+            Units::Metric,
+            30.0,
+            2.0,
+            Direction::Clockwise,
+            10000.0,
+            500.0,
+        );
 
         tool_ordering.auto_ordering(&tool1);
         tool_ordering.auto_ordering(&tool2);
 
         assert_eq!(tool_ordering.ordering(&tool1), Some(1));
         assert_eq!(tool_ordering.ordering(&tool2), Some(2));
-        assert_ne!(tool_ordering.ordering(&tool1), tool_ordering.ordering(&tool2));
+        assert_ne!(
+            tool_ordering.ordering(&tool1),
+            tool_ordering.ordering(&tool2)
+        );
     }
 
     #[test]
     fn test_set_ordering() {
         let mut tool_ordering = ToolOrdering::default();
 
-        let tool1 = Tool::conical(Units::Metric, 45.0, 6.0, Direction::Clockwise, 10000.0, 500.0);
-        let tool2 = Tool::cylindrical(Units::Metric, 20.0, 4.0, Direction::Clockwise, 10000.0, 500.0);
+        let tool1 = Tool::conical(
+            Units::Metric,
+            45.0,
+            6.0,
+            Direction::Clockwise,
+            10000.0,
+            500.0,
+        );
+        let tool2 = Tool::cylindrical(
+            Units::Metric,
+            20.0,
+            4.0,
+            Direction::Clockwise,
+            10000.0,
+            500.0,
+        );
 
         tool_ordering.set_ordering(&tool1, 1);
         tool_ordering.set_ordering(&tool2, 2);
@@ -632,9 +665,30 @@ mod tests {
     fn test_mix_set_and_auto_ordering() {
         let mut tool_ordering = ToolOrdering::default();
 
-        let tool1 = Tool::conical(Units::Metric, 30.0, 4.0, Direction::Clockwise, 10000.0, 500.0);
-        let tool2 = Tool::ballnose(Units::Metric, 20.0, 1.0, Direction::Clockwise, 10000.0, 500.0);
-        let tool3 = Tool::cylindrical(Units::Metric, 32.0, 2.0, Direction::Clockwise, 10000.0, 500.0);
+        let tool1 = Tool::conical(
+            Units::Metric,
+            30.0,
+            4.0,
+            Direction::Clockwise,
+            10000.0,
+            500.0,
+        );
+        let tool2 = Tool::ballnose(
+            Units::Metric,
+            20.0,
+            1.0,
+            Direction::Clockwise,
+            10000.0,
+            500.0,
+        );
+        let tool3 = Tool::cylindrical(
+            Units::Metric,
+            32.0,
+            2.0,
+            Direction::Clockwise,
+            10000.0,
+            500.0,
+        );
 
         tool_ordering.auto_ordering(&tool1);
         tool_ordering.set_ordering(&tool2, 1);
@@ -644,8 +698,17 @@ mod tests {
         assert_eq!(tool_ordering.ordering(&tool2), Some(1));
         assert_eq!(tool_ordering.ordering(&tool3), Some(3));
 
-        assert_ne!(tool_ordering.ordering(&tool1), tool_ordering.ordering(&tool2));
-        assert_ne!(tool_ordering.ordering(&tool1), tool_ordering.ordering(&tool3));
-        assert_ne!(tool_ordering.ordering(&tool2), tool_ordering.ordering(&tool3));
+        assert_ne!(
+            tool_ordering.ordering(&tool1),
+            tool_ordering.ordering(&tool2)
+        );
+        assert_ne!(
+            tool_ordering.ordering(&tool1),
+            tool_ordering.ordering(&tool3)
+        );
+        assert_ne!(
+            tool_ordering.ordering(&tool2),
+            tool_ordering.ordering(&tool3)
+        );
     }
 }

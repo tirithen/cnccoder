@@ -48,10 +48,11 @@ impl Bounds {
 
 /// Indicates if metric or imperial units should be used. This is used as a setting both for a
 /// [Program](../program/struct.Program.html) and [tools](../tools/).
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Hash, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum Units {
     /// Indicates that measurements are given using millimeters.
+    #[default]
     Metric,
     /// Indicates that measurements are given using inches.
     Imperial,
@@ -104,17 +105,12 @@ impl fmt::Display for Units {
     }
 }
 
-impl Default for Units {
-    fn default() -> Self {
-        Units::Metric
-    }
-}
-
 /// Indicates a rotation direction, this is used by the [tools](../tools/), but also when cutting [arcs](../cuts/struct.Arc.html).
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Hash, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum Direction {
     /// Clockwise direction.
+    #[default]
     Clockwise,
     /// Counter clockwise direction.
     Counterclockwise,
@@ -130,12 +126,6 @@ impl fmt::Display for Direction {
                 Direction::Counterclockwise => "counterclockwise",
             }
         )
-    }
-}
-
-impl Default for Direction {
-    fn default() -> Self {
-        Direction::Clockwise
     }
 }
 
@@ -165,9 +155,10 @@ impl fmt::Display for Axis {
 }
 
 /// Indicates how a path should be compensated by the radius of the tool.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum ToolPathCompensation {
     /// The tool will cut at the specified path, without compensating for the radius. This is the default value.
+    #[default]
     None,
     /// The tool will cut at the inside of the path, this is useful for pocket cuts.
     Inner,
@@ -186,11 +177,5 @@ impl fmt::Display for ToolPathCompensation {
                 ToolPathCompensation::Outer => "outer",
             }
         )
-    }
-}
-
-impl Default for ToolPathCompensation {
-    fn default() -> Self {
-        ToolPathCompensation::None
     }
 }

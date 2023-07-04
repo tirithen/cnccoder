@@ -141,7 +141,7 @@ impl Camotics {
     #[must_use]
     pub fn new(name: &str, tools: &HashMap<Tool, u8>, workpiece: Bounds, resolution: f64) -> Self {
         let mut tools_map = HashMap::new();
-        for (index, (tool, number)) in tools.iter().enumerate() {
+        for (_, (tool, number)) in tools.iter().enumerate() {
             tools_map.insert(*number, CamoticsTool::from_tool(*tool, *number));
         }
 
