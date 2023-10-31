@@ -234,7 +234,7 @@ impl InnerContext {
 #[derive(Debug, Clone)]
 pub struct Context<'a> {
     tool: Tool,
-    program: Arc<Mutex<&'a Program>>
+    program: Arc<Mutex<&'a Program>>,
 }
 
 impl<'a> Context<'a> {
@@ -430,7 +430,10 @@ impl Program {
     /// ```
     pub fn context(&mut self, tool: Tool) -> Context {
         self.create_context_if_missing_for_tool(&tool);
-        Context { tool, program: Arc::new(Mutex::new(self)) }
+        Context {
+            tool,
+            program: Arc::new(Mutex::new(self)),
+        }
     }
 
     /// This is the main way of adding cuts to a program.
@@ -729,7 +732,6 @@ mod tests {
             ]
         );
     }
-
 
     #[test]
     #[allow(deprecated)]
