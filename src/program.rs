@@ -246,27 +246,16 @@ impl<'a> Context<'a> {
     /// Applies operations from one context to this context.
     ///
     /// Returns error if tool or units are not the same in both contexts.
-    pub fn merge(&mut self, context: InnerContext) -> Result<()> {
+    pub fn merge(&mut self, context: Context) -> Result<()> {
         let program = self.program.lock().unwrap();
+
         let mut binding = program.contexts.lock().unwrap();
         let program_context = binding.get_mut(&self.tool).unwrap();
 
-        if program_context.units != context.units {
-            return Err(anyhow!("Failed to merge due to mismatching units"));
-        }
+        let binding = context.program.lock().unwrap().contexts.lock().unwrap();
+        let merge_context = binding.get(&context.tool()).unwrap();
 
-        if program_context.tool != context.tool {
-            return Err(anyhow!("Failed to merge due to mismatching tools"));
-        }
-
-        program_context.z_safe = context.z_safe;
-        program_context.z_tool_change = context.z_tool_change;
-
-        for operation in context.operations {
-            program_context.operations.push(operation);
-        }
-
-        Ok(())
+        program_context.merge(merge_context.clone())
     }
 
     /// Appends an operation to the context.
