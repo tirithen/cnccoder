@@ -216,6 +216,11 @@ impl InnerContext {
         bounds
     }
 
+    /// Returns all operations for this context.
+    pub fn operations(&self) -> Vec<Operation> {
+        self.operations.clone()
+    }
+
     /// Converts context to G-code instructions.
     pub fn to_instructions(&self) -> Result<Vec<Instruction>> {
         let mut instructions = vec![];
@@ -309,12 +314,20 @@ impl<'a> Context<'a> {
         context.z_tool_change()
     }
 
-    /// Returns the bounds for the context
+    /// Returns the bounds for this context.
     pub fn bounds(&self) -> Bounds {
         let program = self.program.lock().unwrap();
         let mut binding = program.contexts.lock().unwrap();
         let context = binding.get_mut(&self.tool).unwrap();
         context.bounds()
+    }
+
+    /// Returns all operations for this context.
+    pub fn operations(&self) -> Vec<Operation> {
+        let program = self.program.lock().unwrap();
+        let mut binding = program.contexts.lock().unwrap();
+        let context = binding.get_mut(&self.tool).unwrap();
+        context.operations()
     }
 
     /// Converts context to G-code instructions.
