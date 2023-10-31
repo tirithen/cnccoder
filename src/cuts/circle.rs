@@ -76,7 +76,7 @@ impl Circle {
     }
 
     /// Converts the struct to G-code instructions.
-    pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
+    pub fn to_instructions(&self, context: InnerContext) -> Result<Vec<Instruction>> {
         let mut instructions = vec![];
 
         let tool_radius = context.tool().radius();

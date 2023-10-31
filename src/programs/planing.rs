@@ -1,5 +1,3 @@
-use anyhow::Result;
-
 use crate::prelude::*;
 
 /// Measurements required by the planing program.
@@ -34,26 +32,24 @@ impl Default for PlaningMeasurements {
 }
 
 /// A program for planing a surface down to a specific depth.
-pub fn planing(tool: Tool, measurements: PlaningMeasurements) -> Result<Program> {
+pub fn planing(tool: Tool, measurements: PlaningMeasurements) -> Program {
     let mut program = Program::new(
         measurements.units,
         measurements.z_start + measurements.units.measurement_from_mm(2.0),
         measurements.z_start + measurements.units.measurement_from_mm(50.0),
     );
 
-    program.extend(&tool, |context| {
-        context.append_cut(Cut::plane(
-            Vector3::new(-tool.radius(), -tool.radius(), measurements.z_start),
-            Vector2::new(
-                measurements.x_length + tool.diameter(),
-                measurements.y_length + tool.diameter(),
-            ),
-            measurements.z_end,
-            measurements.z_max_step,
-        ));
+    let mut context = program.context(tool);
 
-        Ok(())
-    })?;
+    context.append_cut(Cut::plane(
+        Vector3::new(-tool.radius(), -tool.radius(), measurements.z_start),
+        Vector2::new(
+            measurements.x_length + tool.diameter(),
+            measurements.y_length + tool.diameter(),
+        ),
+        measurements.z_end,
+        measurements.z_max_step,
+    ));
 
-    Ok(program)
+    program
 }

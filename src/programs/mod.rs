@@ -39,7 +39,7 @@
 //!         5000.0,
 //!     );
 //!
-//!     let program = planing(tool, measurements)?;
+//!     let program = planing(tool, measurements);
 //!
 //!     write_project("planing", &program, 0.5)?;
 //!

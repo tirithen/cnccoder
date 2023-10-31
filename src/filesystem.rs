@@ -29,16 +29,14 @@ use crate::{camotics::*, program::*};
 ///         5000.0
 ///     );
 ///
-///     program.extend(&tool, |context| {
-///         context.append_cut(Cut::plane(
-///             Vector3::new(0.0, 0.0, 3.0),
-///             Vector2::new(100.0, 100.0),
-///             0.0,
-///             1.0,
-///         ));
+///     let mut context = program.context(tool);
 ///
-///         Ok(())
-///     })?;
+///     context.append_cut(Cut::plane(
+///         Vector3::new(0.0, 0.0, 3.0),
+///         Vector2::new(100.0, 100.0),
+///         0.0,
+///         1.0,
+///     ));
 ///
 ///     write_project("planing", &program, 0.5)?;
 ///
@@ -84,30 +82,28 @@ mod tests {
             400.0,
         );
 
-        program.extend(&tool, |context| {
-            context.append_cut(Cut::path(
-                Vector3::new(0.0, 0.0, 3.0),
-                vec![Segment::line(
-                    Vector2::default(),
-                    Vector2::new(-28.0, -30.0),
-                )],
-                -0.1,
-                1.0,
-            ));
+        let mut context = program.context(tool);
 
-            context.append_cut(Cut::path(
-                Vector3::new(0.0, 0.0, 3.0),
-                vec![
-                    Segment::line(Vector2::new(23.0, 12.0), Vector2::new(5.0, 10.0)),
-                    Segment::line(Vector2::new(5.0, 10.0), Vector2::new(67.0, 102.0)),
-                    Segment::line(Vector2::new(67.0, 102.0), Vector2::new(23.0, 12.0)),
-                ],
-                -0.1,
-                1.0,
-            ));
+        context.append_cut(Cut::path(
+            Vector3::new(0.0, 0.0, 3.0),
+            vec![Segment::line(
+                Vector2::default(),
+                Vector2::new(-28.0, -30.0),
+            )],
+            -0.1,
+            1.0,
+        ));
 
-            Ok(())
-        })?;
+        context.append_cut(Cut::path(
+            Vector3::new(0.0, 0.0, 3.0),
+            vec![
+                Segment::line(Vector2::new(23.0, 12.0), Vector2::new(5.0, 10.0)),
+                Segment::line(Vector2::new(5.0, 10.0), Vector2::new(67.0, 102.0)),
+                Segment::line(Vector2::new(67.0, 102.0), Vector2::new(23.0, 12.0)),
+            ],
+            -0.1,
+            1.0,
+        ));
 
         write_project("test-temp", &program, 0.5)?;
 

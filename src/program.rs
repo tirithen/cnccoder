@@ -28,16 +28,14 @@
 //!         5_000.0
 //!     );
 //!
-//!     program.extend(&tool, |context| {
-//!         context.append_cut(Cut::plane(
-//!             Vector3::new(0.0, 0.0, 3.0),
-//!             Vector2::new(100.0, 100.0),
-//!             0.0,
-//!             1.0,
-//!         ));
+//!     let mut context = program.context(tool);
 //!
-//!         Ok(())
-//!     })?;
+//!     context.append_cut(Cut::plane(
+//!         Vector3::new(0.0, 0.0, 3.0),
+//!         Vector2::new(100.0, 100.0),
+//!         0.0,
+//!         1.0,
+//!     ));
 //!
 //!     println!("G-code: {}", program.to_gcode()?);
 //!
@@ -84,7 +82,7 @@ impl Operation {
     }
 
     /// Converts operation to G-code instructions.
-    pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
+    pub fn to_instructions(&self, context: InnerContext) -> Result<Vec<Instruction>> {
         match self {
             Self::Cut(o) => o.to_instructions(context),
             Self::Empty(_) => Ok(vec![Instruction::Empty(Empty {})]),
@@ -96,9 +94,13 @@ impl Operation {
 
 /// A program context that keeps the state data for operations paired with a specific tool.
 /// The reason for grouping the operations per tool is to reduce the amound of tool
-/// changes, which is expecially useful for CNC machines that needs manual tool changes..
+/// changes, which is expecially useful for CNC machines that needs manual tool changes.
+///
+/// This struct is mainly for internal use, most of the time you would use the ToolContext
+/// struct instead.
+#[doc(hidden)]
 #[derive(Debug, Clone)]
-pub struct Context {
+pub struct InnerContext {
     units: Units,
     tool: Tool,
     z_safe: f64,
@@ -106,7 +108,7 @@ pub struct Context {
     operations: Vec<Operation>,
 }
 
-impl Context {
+impl InnerContext {
     /// Creates a new `Context` struct.
     pub fn new(units: Units, tool: &Tool, z_safe: f64, z_tool_change: f64) -> Self {
         Self {
@@ -121,7 +123,7 @@ impl Context {
     /// Applies operations from one context to this context.
     ///
     /// Returns error if tool or units are not the same in both contexts.
-    pub fn merge(&mut self, context: Context) -> Result<()> {
+    pub fn merge(&mut self, context: InnerContext) -> Result<()> {
         if self.units != context.units {
             return Err(anyhow!("Failed to merge due to mismatching units"));
         }
@@ -226,6 +228,104 @@ impl Context {
     }
 }
 
+/// A program tool context that updates the state data for operations paired with a specific
+/// tool. The reason for grouping the operations per tool is to reduce the amound of tool
+/// changes, which is expecially useful for CNC machines that needs manual tool changes.
+#[derive(Debug, Clone)]
+pub struct Context<'a> {
+    tool: Tool,
+    program: Arc<Mutex<&'a Program>>
+}
+
+impl<'a> Context<'a> {
+    /// Applies operations from one context to this context.
+    ///
+    /// Returns error if tool or units are not the same in both contexts.
+    pub fn merge(&mut self, context: InnerContext) -> Result<()> {
+        let program = self.program.lock().unwrap();
+        let mut binding = program.contexts.lock().unwrap();
+        let program_context = binding.get_mut(&self.tool).unwrap();
+
+        if program_context.units != context.units {
+            return Err(anyhow!("Failed to merge due to mismatching units"));
+        }
+
+        if program_context.tool != context.tool {
+            return Err(anyhow!("Failed to merge due to mismatching tools"));
+        }
+
+        program_context.z_safe = context.z_safe;
+        program_context.z_tool_change = context.z_tool_change;
+
+        for operation in context.operations {
+            program_context.operations.push(operation);
+        }
+
+        Ok(())
+    }
+
+    /// Appends an operation to the context.
+    pub fn append(&mut self, operation: Operation) {
+        let program = self.program.lock().unwrap();
+        let mut binding = program.contexts.lock().unwrap();
+        let context = binding.get_mut(&self.tool).unwrap();
+        context.append(operation);
+    }
+
+    /// Appends a cut operation to the context.
+    pub fn append_cut(&mut self, cut: Cut) {
+        self.append(Operation::Cut(cut));
+    }
+
+    /// Returns the units used by the context.
+    pub fn units(&self) -> Units {
+        let program = self.program.lock().unwrap();
+        let mut binding = program.contexts.lock().unwrap();
+        let context = binding.get_mut(&self.tool).unwrap();
+        context.units()
+    }
+
+    /// Returns the tool used by the context.
+    pub fn tool(&self) -> Tool {
+        self.tool
+    }
+
+    /// Returns the z safe value set for this context.
+    ///
+    /// The value indicates the z height where the machine tool can safely travel
+    /// in the x and y axis without colliding with the workpiece.
+    pub fn z_safe(&self) -> f64 {
+        let program = self.program.lock().unwrap();
+        let mut binding = program.contexts.lock().unwrap();
+        let context = binding.get_mut(&self.tool).unwrap();
+        context.z_safe()
+    }
+
+    /// Returns the z height position used for manual tool change.
+    pub fn z_tool_change(&self) -> f64 {
+        let program = self.program.lock().unwrap();
+        let mut binding = program.contexts.lock().unwrap();
+        let context = binding.get_mut(&self.tool).unwrap();
+        context.z_tool_change()
+    }
+
+    /// Returns the bounds for the context
+    pub fn bounds(&self) -> Bounds {
+        let program = self.program.lock().unwrap();
+        let mut binding = program.contexts.lock().unwrap();
+        let context = binding.get_mut(&self.tool).unwrap();
+        context.bounds()
+    }
+
+    /// Converts context to G-code instructions.
+    pub fn to_instructions(&self) -> Result<Vec<Instruction>> {
+        let program = self.program.lock().unwrap();
+        let mut binding = program.contexts.lock().unwrap();
+        let context = binding.get_mut(&self.tool).unwrap();
+        context.to_instructions()
+    }
+}
+
 /// A program that stores information about all structs and tools used in a project. Several programs can
 /// also be merged into a single one.
 #[derive(Debug, Clone)]
@@ -233,15 +333,15 @@ pub struct Program {
     z_safe: f64,
     z_tool_change: f64,
     units: Units,
-    contexts: Arc<Mutex<HashMap<Tool, Arc<Mutex<Context>>>>>,
+    contexts: Arc<Mutex<HashMap<Tool, InnerContext>>>,
     tool_ordering: Arc<Mutex<ToolOrdering>>,
 }
 
 impl Program {
     /// Creates a new `Program` struct.
     #[must_use]
-    pub fn new(units: Units, z_safe: f64, z_tool_change: f64) -> Program {
-        Program {
+    pub fn new(units: Units, z_safe: f64, z_tool_change: f64) -> Self {
+        Self {
             z_safe,
             z_tool_change,
             units,
@@ -252,8 +352,8 @@ impl Program {
 
     /// Creates a new empty `Program` with the same same settings as the supplied one.
     #[must_use]
-    pub fn new_empty_from(program: &Program) -> Program {
-        Program {
+    pub fn new_empty_from(program: &Self) -> Self {
+        Self {
             z_safe: program.z_safe,
             z_tool_change: program.z_tool_change,
             units: program.units,
@@ -295,12 +395,42 @@ impl Program {
     fn create_context_if_missing_for_tool(&mut self, tool: &Tool) {
         let mut contexts = self.contexts.lock().unwrap();
         if let Vacant(entry) = contexts.entry(*tool) {
-            let context = Context::new(self.units, tool, self.z_safe, self.z_tool_change);
-            entry.insert(Arc::new(Mutex::new(context)));
+            let context = InnerContext::new(self.units, tool, self.z_safe, self.z_tool_change);
+            entry.insert(context);
 
             let mut tool_ordering = self.tool_ordering.lock().unwrap();
             tool_ordering.auto_ordering(tool);
         }
+    }
+
+    /// This is the main way of adding cuts to a program.
+    /// It returns a new tool context that can be used to extend the program.
+    ///
+    /// An example for adding cuts to a program:
+    /// ```
+    /// use cnccoder::prelude::*;
+    ///
+    /// let mut program = Program::default();
+    /// let tool = Tool::default();
+    ///
+    /// // Extend the program with new cuts
+    /// let mut context = program.context(tool);
+    ///
+    /// // Append the planing cuts to the cylindrical tool context
+    /// context.append_cut(Cut::plane(
+    ///     // Start at the x 0 mm, y 0 mm, z 3 mm coordinates
+    ///     Vector3::new(0.0, 0.0, 3.0),
+    ///     // Plane a 100 x 100 mm area
+    ///     Vector2::new(100.0, 100.0),
+    ///     // Plane down to 0 mm height (from 3 mm)
+    ///     0.0,
+    ///     // Cut at the most 1 mm per pass
+    ///     1.0,
+    /// ));
+    /// ```
+    pub fn context(&mut self, tool: Tool) -> Context {
+        self.create_context_if_missing_for_tool(&tool);
+        Context { tool, program: Arc::new(Mutex::new(self)) }
     }
 
     /// This is the main way of adding cuts to a program.
@@ -335,15 +465,18 @@ impl Program {
     ///     Ok(())
     /// }
     /// ```
+    #[deprecated(
+        since = "0.1.0",
+        note = "Replaced with the .context method that does not require operations to be added via closures."
+    )]
     pub fn extend<Action>(&mut self, tool: &Tool, action: Action) -> Result<()>
     where
-        Action: Fn(&mut Context) -> Result<()>,
+        Action: Fn(&mut InnerContext) -> Result<()>,
     {
         self.create_context_if_missing_for_tool(tool);
         let mut locked_contexts = self.contexts.lock().unwrap();
         let context = locked_contexts.get_mut(tool).unwrap();
-        let locked_context = &mut context.lock().unwrap();
-        action(locked_context)
+        action(context)
     }
 
     /// Merges another program into this program.
@@ -365,8 +498,8 @@ impl Program {
         let mut contexts = self.contexts.lock().unwrap();
 
         for tool in program.tools() {
-            let program_context = program_contexts.get(&tool).unwrap().lock().unwrap();
-            let context = &mut contexts.get_mut(&tool).unwrap().lock().unwrap();
+            let program_context = program_contexts.get(&tool).unwrap();
+            let context = &mut contexts.get_mut(&tool).unwrap();
             context.merge(program_context.clone())?;
         }
 
@@ -389,7 +522,7 @@ impl Program {
 
         for tool in tools {
             if let Some(context) = contexts.get(&tool) {
-                let context_bounds = context.lock().unwrap().bounds();
+                let context_bounds = context.bounds();
                 bounds.min.x = if bounds.min.x > context_bounds.min.x {
                     context_bounds.min.x
                 } else {
@@ -435,7 +568,6 @@ impl Program {
 
         for tool in tools {
             if let Some(context) = contexts.get(&tool) {
-                let locked_context = &mut context.lock().unwrap();
                 let tool_number = self.tool_ordering(&tool).unwrap();
 
                 raw_instructions.push(Instruction::Empty(Empty {}));
@@ -445,14 +577,14 @@ impl Program {
                     Instruction::Comment(Comment {
                         text: format!("Tool change: {}", tool),
                     }),
-                    match locked_context.units {
+                    match context.units {
                         Units::Metric => Instruction::G21(G21 {}),
                         Units::Imperial => Instruction::G20(G20 {}),
                     },
                     Instruction::G0(G0 {
                         x: None,
                         y: None,
-                        z: Some(locked_context.z_tool_change),
+                        z: Some(context.z_tool_change),
                     }),
                     Instruction::M5(M5 {}),
                     Instruction::M6(M6 { t: tool_number }),
@@ -467,7 +599,7 @@ impl Program {
                 ]);
 
                 // Add tool instructions
-                raw_instructions.append(&mut locked_context.to_instructions()?);
+                raw_instructions.append(&mut context.to_instructions()?);
             }
         }
 
@@ -553,12 +685,8 @@ mod tests {
             400.0,
         );
 
-        program
-            .extend(&tool, |context| {
-                context.append_cut(Cut::drill(Vector3::default(), -1.0));
-                Ok(())
-            })
-            .unwrap();
+        let mut context = program.context(tool);
+        context.append_cut(Cut::drill(Vector3::default(), -1.0));
 
         assert_eq!(program.tools().len(), 1);
         assert_eq!(program.to_instructions().unwrap(), vec![
@@ -602,8 +730,10 @@ mod tests {
         );
     }
 
+
     #[test]
-    fn test_program_tools() -> Result<()> {
+    #[allow(deprecated)]
+    fn test_program_extend() -> Result<()> {
         let mut program = Program::new(Units::Metric, 10.0, 50.0);
 
         let tool1 = Tool::cylindrical(
@@ -661,6 +791,58 @@ mod tests {
     }
 
     #[test]
+    fn test_program_tools() -> Result<()> {
+        let mut program = Program::new(Units::Metric, 10.0, 50.0);
+
+        let tool1 = Tool::cylindrical(
+            Units::Metric,
+            50.0,
+            4.0,
+            Direction::Clockwise,
+            5_000.0,
+            400.0,
+        );
+
+        let tool2 = Tool::conical(
+            Units::Metric,
+            45.0,
+            15.0,
+            Direction::Clockwise,
+            5_000.0,
+            400.0,
+        );
+
+        let mut tool1_context = program.context(tool1);
+        tool1_context.append_cut(Cut::path(
+            Vector3::new(0.0, 0.0, 3.0),
+            vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
+            -0.1,
+            1.0,
+        ));
+
+        let mut tool2_context = program.context(tool2);
+        tool2_context.append_cut(Cut::path(
+            Vector3::new(5.0, 10.0, 3.0),
+            vec![Segment::line(
+                Vector2::new(5.0, 10.0),
+                Vector2::new(15.0, 10.0),
+            )],
+            -0.1,
+            1.0,
+        ));
+
+        let tools = program.tools();
+        assert_eq!(tools, vec![tool1, tool2]);
+
+        program.set_tool_ordering(&tool2, 0);
+
+        let tools = program.tools();
+        assert_eq!(tools, vec![tool2, tool1]);
+
+        Ok(())
+    }
+
+    #[test]
     fn test_program_to_instructions() -> Result<()> {
         let mut program = Program::new(Units::Metric, 10.0, 50.0);
 
@@ -682,30 +864,24 @@ mod tests {
             400.0,
         );
 
-        program.extend(&tool1, |context| {
-            context.append_cut(Cut::path(
-                Vector3::new(0.0, 0.0, 3.0),
-                vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
-                -0.1,
-                1.0,
-            ));
+        let mut tool1_context = program.context(tool1);
+        tool1_context.append_cut(Cut::path(
+            Vector3::new(0.0, 0.0, 3.0),
+            vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
+            -0.1,
+            1.0,
+        ));
 
-            Ok(())
-        })?;
-
-        program.extend(&tool2, |context| {
-            context.append_cut(Cut::path(
-                Vector3::new(5.0, 10.0, 3.0),
-                vec![Segment::line(
-                    Vector2::new(5.0, 10.0),
-                    Vector2::new(15.0, 10.0),
-                )],
-                -0.1,
-                1.0,
-            ));
-
-            Ok(())
-        })?;
+        let mut tool2_context = program.context(tool2);
+        tool2_context.append_cut(Cut::path(
+            Vector3::new(5.0, 10.0, 3.0),
+            vec![Segment::line(
+                Vector2::new(5.0, 10.0),
+                Vector2::new(15.0, 10.0),
+            )],
+            -0.1,
+            1.0,
+        ));
 
         let instructions = program.to_instructions()?;
 
@@ -844,43 +1020,34 @@ mod tests {
 
         let mut program1 = Program::new(Units::Metric, 10.0, 40.0);
 
-        program1.extend(&tool1, |context| {
-            context.append_cut(Cut::path(
-                Vector3::new(0.0, 0.0, 3.0),
-                vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
-                -0.1,
-                1.0,
-            ));
-
-            Ok(())
-        })?;
+        let mut program1_tool1_context = program1.context(tool1);
+        program1_tool1_context.append_cut(Cut::path(
+            Vector3::new(0.0, 0.0, 3.0),
+            vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
+            -0.1,
+            1.0,
+        ));
 
         let mut program2 = Program::new(Units::Metric, 5.0, 50.0);
 
-        program2.extend(&tool1, |context| {
-            context.append_cut(Cut::path(
-                Vector3::new(10.0, 10.0, 3.0),
-                vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
-                -0.1,
-                1.0,
-            ));
+        let mut program2_tool1_context = program2.context(tool1);
+        program2_tool1_context.append_cut(Cut::path(
+            Vector3::new(10.0, 10.0, 3.0),
+            vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
+            -0.1,
+            1.0,
+        ));
 
-            Ok(())
-        })?;
-
-        program2.extend(&tool2, |context| {
-            context.append_cut(Cut::path(
-                Vector3::new(5.0, 10.0, 3.0),
-                vec![Segment::line(
-                    Vector2::new(5.0, 10.0),
-                    Vector2::new(15.0, 10.0),
-                )],
-                -0.1,
-                1.0,
-            ));
-
-            Ok(())
-        })?;
+        let mut program2_tool2_context = program2.context(tool2);
+        program2_tool2_context.append_cut(Cut::path(
+            Vector3::new(5.0, 10.0, 3.0),
+            vec![Segment::line(
+                Vector2::new(5.0, 10.0),
+                Vector2::new(15.0, 10.0),
+            )],
+            -0.1,
+            1.0,
+        ));
 
         program1.merge(&program2)?;
 
@@ -978,30 +1145,24 @@ mod tests {
             400.0,
         );
 
-        program.extend(&tool1, |context| {
-            context.append_cut(Cut::path(
-                Vector3::new(0.0, 0.0, 3.0),
-                vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
-                -0.1,
-                1.0,
-            ));
+        let mut tool1_context = program.context(tool1);
+        tool1_context.append_cut(Cut::path(
+            Vector3::new(0.0, 0.0, 3.0),
+            vec![Segment::line(Vector2::default(), Vector2::new(5.0, 10.0))],
+            -0.1,
+            1.0,
+        ));
 
-            Ok(())
-        })?;
-
-        program.extend(&tool2, |context| {
-            context.append_cut(Cut::path(
-                Vector3::new(5.0, 10.0, 3.0),
-                vec![Segment::line(
-                    Vector2::new(5.0, 10.0),
-                    Vector2::new(15.0, 10.0),
-                )],
-                -0.1,
-                1.0,
-            ));
-
-            Ok(())
-        })?;
+        let mut tool2_context = program.context(tool2);
+        tool2_context.append_cut(Cut::path(
+            Vector3::new(5.0, 10.0, 3.0),
+            vec![Segment::line(
+                Vector2::new(5.0, 10.0),
+                Vector2::new(15.0, 10.0),
+            )],
+            -0.1,
+            1.0,
+        ));
 
         program.set_tool_ordering(&tool2, 0);
 
@@ -1076,30 +1237,28 @@ mod tests {
             400.0,
         );
 
-        program.extend(&tool, |context| {
-            context.append_cut(Cut::path(
-                Vector3::new(0.0, 0.0, 3.0),
-                vec![Segment::line(
-                    Vector2::default(),
-                    Vector2::new(-28.0, -30.0),
-                )],
-                -0.1,
-                1.0,
-            ));
+        let mut context = program.context(tool);
 
-            context.append_cut(Cut::path(
-                Vector3::new(0.0, 0.0, 3.0),
-                vec![
-                    Segment::line(Vector2::new(23.0, 12.0), Vector2::new(5.0, 10.0)),
-                    Segment::line(Vector2::new(5.0, 10.0), Vector2::new(67.0, 102.0)),
-                    Segment::line(Vector2::new(67.0, 102.0), Vector2::new(23.0, 12.0)),
-                ],
-                -0.1,
-                1.0,
-            ));
+        context.append_cut(Cut::path(
+            Vector3::new(0.0, 0.0, 3.0),
+            vec![Segment::line(
+                Vector2::default(),
+                Vector2::new(-28.0, -30.0),
+            )],
+            -0.1,
+            1.0,
+        ));
 
-            Ok(())
-        })?;
+        context.append_cut(Cut::path(
+            Vector3::new(0.0, 0.0, 3.0),
+            vec![
+                Segment::line(Vector2::new(23.0, 12.0), Vector2::new(5.0, 10.0)),
+                Segment::line(Vector2::new(5.0, 10.0), Vector2::new(67.0, 102.0)),
+                Segment::line(Vector2::new(67.0, 102.0), Vector2::new(23.0, 12.0)),
+            ],
+            -0.1,
+            1.0,
+        ));
 
         let bounds = program.bounds();
 

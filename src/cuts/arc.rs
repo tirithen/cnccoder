@@ -80,7 +80,7 @@ impl Arc {
 
     /// Converts arc to G-code instructions, will return error if the distance between
     /// center -> from does not equal center -> to.
-    pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
+    pub fn to_instructions(&self, context: InnerContext) -> Result<Vec<Instruction>> {
         let distance_from = self.from.distance_to(self.center);
         let distance_to = self.to.distance_to(self.center);
 

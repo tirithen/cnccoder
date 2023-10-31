@@ -183,7 +183,6 @@ impl Camotics {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Result;
     use serde_json::Value;
 
     use super::*;
@@ -267,7 +266,7 @@ mod tests {
     }
 
     #[test]
-    fn test_camotics_from_program() -> Result<()> {
+    fn test_camotics_from_program() {
         let mut program = Program::new(Units::Metric, 10.0, 50.0);
 
         let tool = Tool::cylindrical(
@@ -279,30 +278,28 @@ mod tests {
             400.0,
         );
 
-        program.extend(&tool, |context| {
-            context.append_cut(Cut::path(
-                Vector3::new(0.0, 0.0, 3.0),
-                vec![Segment::line(
-                    Vector2::default(),
-                    Vector2::new(-28.0, -30.0),
-                )],
-                -0.1,
-                1.0,
-            ));
+        let mut context = program.context(tool);
 
-            context.append_cut(Cut::path(
-                Vector3::new(0.0, 0.0, 3.0),
-                vec![
-                    Segment::line(Vector2::new(23.0, 12.0), Vector2::new(5.0, 10.0)),
-                    Segment::line(Vector2::new(5.0, 10.0), Vector2::new(67.0, 102.0)),
-                    Segment::line(Vector2::new(67.0, 102.0), Vector2::new(23.0, 12.0)),
-                ],
-                -0.1,
-                1.0,
-            ));
+        context.append_cut(Cut::path(
+            Vector3::new(0.0, 0.0, 3.0),
+            vec![Segment::line(
+                Vector2::default(),
+                Vector2::new(-28.0, -30.0),
+            )],
+            -0.1,
+            1.0,
+        ));
 
-            Ok(())
-        })?;
+        context.append_cut(Cut::path(
+            Vector3::new(0.0, 0.0, 3.0),
+            vec![
+                Segment::line(Vector2::new(23.0, 12.0), Vector2::new(5.0, 10.0)),
+                Segment::line(Vector2::new(5.0, 10.0), Vector2::new(67.0, 102.0)),
+                Segment::line(Vector2::new(67.0, 102.0), Vector2::new(23.0, 12.0)),
+            ],
+            -0.1,
+            1.0,
+        ));
 
         let camotics = Camotics::from_program("test-project", &program, 1.0);
 
@@ -325,7 +322,5 @@ mod tests {
                 files: vec!["test-project.gcode".to_string()]
             }
         );
-
-        Ok(())
     }
 }

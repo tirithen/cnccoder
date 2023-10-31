@@ -95,7 +95,7 @@ impl Area {
     }
 
     /// Converts the struct to G-code instructions.
-    pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
+    pub fn to_instructions(&self, context: InnerContext) -> Result<Vec<Instruction>> {
         let tool_radius = context.tool().radius();
         let tool_diameter = context.tool().diameter();
         let tool_units = context.tool().units();

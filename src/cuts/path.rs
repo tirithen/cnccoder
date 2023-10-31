@@ -305,7 +305,7 @@ impl Path {
     }
 
     /// Converts the struct to G-code instructions.
-    pub fn to_instructions(&self, context: Context) -> Result<Vec<Instruction>> {
+    pub fn to_instructions(&self, context: InnerContext) -> Result<Vec<Instruction>> {
         let mut instructions = vec![];
 
         if self.segments.is_empty() {

@@ -17,22 +17,20 @@ fn main() -> Result<()> {
         5000.0,               // Max feed rate/speed that the cutter will travel with (mm/min)
     );
 
-    // Extend the program with the planing cuts
-    program.extend(&tool, |context| {
-        // Append the planing cuts to the cylindrical tool context
-        context.append_cut(Cut::plane(
-            // Start at the x 0 mm, y 0 mm, z 3 mm coordinates
-            Vector3::new(0.0, 0.0, 3.0),
-            // Plane a 100 x 100 mm area
-            Vector2::new(100.0, 100.0),
-            // Plane down to 0 mm height (from 3 mm)
-            0.0,
-            // Cut at the most 1 mm per pass
-            1.0,
-        ));
+    // Get the tool context to extend the program
+    let mut context = program.context(tool);
 
-        Ok(())
-    })?;
+    // Append the planing cuts to the cylindrical tool context
+    context.append_cut(Cut::plane(
+        // Start at the x 0 mm, y 0 mm, z 3 mm coordinates
+        Vector3::new(0.0, 0.0, 3.0),
+        // Plane a 100 x 100 mm area
+        Vector2::new(100.0, 100.0),
+        // Plane down to 0 mm height (from 3 mm)
+        0.0,
+        // Cut at the most 1 mm per pass
+        1.0,
+    ));
 
     // Write the G-code (for CNC) `planing.gcode` and Camotics project file
     // `planing.camotics` (for simulation) to disk using a resolution value
