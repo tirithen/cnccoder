@@ -45,10 +45,10 @@
 //! }
 //! ```
 
+use std::cell::RefCell;
 use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::rc::Rc;
 
 use anyhow::{anyhow, Result};
 
@@ -239,7 +239,7 @@ impl InnerContext {
 #[derive(Debug, Clone)]
 pub struct Context<'a> {
     tool: Tool,
-    program: Arc<Mutex<&'a Program>>,
+    program: Rc<RefCell<&'a Program>>,
 }
 
 impl<'a> Context<'a> {
@@ -247,12 +247,12 @@ impl<'a> Context<'a> {
     ///
     /// Returns error if tool or units are not the same in both contexts.
     pub fn merge(&mut self, context: Context) -> Result<()> {
-        let program = self.program.lock().unwrap();
+        let program = self.program.borrow();
 
-        let mut binding = program.contexts.lock().unwrap();
+        let mut binding = program.contexts.borrow_mut();
         let program_context = binding.get_mut(&self.tool).unwrap();
 
-        let binding = context.program.lock().unwrap().contexts.lock().unwrap();
+        let binding = context.program.borrow().contexts.borrow();
         let merge_context = binding.get(&context.tool()).unwrap();
 
         program_context.merge(merge_context.clone())
@@ -260,8 +260,8 @@ impl<'a> Context<'a> {
 
     /// Appends an operation to the context.
     pub fn append(&mut self, operation: Operation) {
-        let program = self.program.lock().unwrap();
-        let mut binding = program.contexts.lock().unwrap();
+        let program = self.program.borrow();
+        let mut binding = program.contexts.borrow_mut();
         let context = binding.get_mut(&self.tool).unwrap();
         context.append(operation);
     }
@@ -273,8 +273,8 @@ impl<'a> Context<'a> {
 
     /// Returns the units used by the context.
     pub fn units(&self) -> Units {
-        let program = self.program.lock().unwrap();
-        let mut binding = program.contexts.lock().unwrap();
+        let program = self.program.borrow();
+        let mut binding = program.contexts.borrow_mut();
         let context = binding.get_mut(&self.tool).unwrap();
         context.units()
     }
@@ -289,40 +289,40 @@ impl<'a> Context<'a> {
     /// The value indicates the z height where the machine tool can safely travel
     /// in the x and y axis without colliding with the workpiece.
     pub fn z_safe(&self) -> f64 {
-        let program = self.program.lock().unwrap();
-        let mut binding = program.contexts.lock().unwrap();
+        let program = self.program.borrow();
+        let mut binding = program.contexts.borrow_mut();
         let context = binding.get_mut(&self.tool).unwrap();
         context.z_safe()
     }
 
     /// Returns the z height position used for manual tool change.
     pub fn z_tool_change(&self) -> f64 {
-        let program = self.program.lock().unwrap();
-        let mut binding = program.contexts.lock().unwrap();
+        let program = self.program.borrow();
+        let mut binding = program.contexts.borrow_mut();
         let context = binding.get_mut(&self.tool).unwrap();
         context.z_tool_change()
     }
 
     /// Returns the bounds for this context.
     pub fn bounds(&self) -> Bounds {
-        let program = self.program.lock().unwrap();
-        let mut binding = program.contexts.lock().unwrap();
+        let program = self.program.borrow();
+        let mut binding = program.contexts.borrow_mut();
         let context = binding.get_mut(&self.tool).unwrap();
         context.bounds()
     }
 
     /// Returns all operations for this context.
     pub fn operations(&self) -> Vec<Operation> {
-        let program = self.program.lock().unwrap();
-        let mut binding = program.contexts.lock().unwrap();
+        let program = self.program.borrow();
+        let mut binding = program.contexts.borrow_mut();
         let context = binding.get_mut(&self.tool).unwrap();
         context.operations()
     }
 
     /// Converts context to G-code instructions.
     pub fn to_instructions(&self) -> Result<Vec<Instruction>> {
-        let program = self.program.lock().unwrap();
-        let mut binding = program.contexts.lock().unwrap();
+        let program = self.program.borrow();
+        let mut binding = program.contexts.borrow_mut();
         let context = binding.get_mut(&self.tool).unwrap();
         context.to_instructions()
     }
@@ -335,8 +335,8 @@ pub struct Program {
     z_safe: f64,
     z_tool_change: f64,
     units: Units,
-    contexts: Arc<Mutex<HashMap<Tool, InnerContext>>>,
-    tool_ordering: Arc<Mutex<ToolOrdering>>,
+    contexts: Rc<RefCell<HashMap<Tool, InnerContext>>>,
+    tool_ordering: Rc<RefCell<ToolOrdering>>,
 }
 
 impl Program {
@@ -347,8 +347,8 @@ impl Program {
             z_safe,
             z_tool_change,
             units,
-            contexts: Arc::new(Mutex::new(HashMap::new())),
-            tool_ordering: Arc::new(Mutex::new(ToolOrdering::default())),
+            contexts: Rc::new(RefCell::new(HashMap::new())),
+            tool_ordering: Rc::new(RefCell::new(ToolOrdering::default())),
         }
     }
 
@@ -359,8 +359,8 @@ impl Program {
             z_safe: program.z_safe,
             z_tool_change: program.z_tool_change,
             units: program.units,
-            contexts: Arc::new(Mutex::new(HashMap::new())),
-            tool_ordering: Arc::new(Mutex::new(ToolOrdering::default())),
+            contexts: Rc::new(RefCell::new(HashMap::new())),
+            tool_ordering: Rc::new(RefCell::new(ToolOrdering::default())),
         }
     }
 
@@ -383,24 +383,24 @@ impl Program {
     /// (T1 is the first tool, T2 is the second tool and so on).
     #[must_use]
     pub fn tool_ordering(&self, tool: &Tool) -> Option<u8> {
-        let tool_ordering = self.tool_ordering.lock().unwrap();
+        let tool_ordering = self.tool_ordering.borrow();
         tool_ordering.ordering(tool)
     }
 
     /// Allows setting the positional order for a tool, this will also automatically increment the position
     /// of any tools that comes after the newly repositioned tool, resolving any ordering conflicts.
     pub fn set_tool_ordering(&self, tool: &Tool, ordering: u8) {
-        let mut tool_ordering = self.tool_ordering.lock().unwrap();
+        let mut tool_ordering = self.tool_ordering.borrow_mut();
         tool_ordering.set_ordering(tool, ordering);
     }
 
     fn create_context_if_missing_for_tool(&mut self, tool: &Tool) {
-        let mut contexts = self.contexts.lock().unwrap();
+        let mut contexts = self.contexts.borrow_mut();
         if let Vacant(entry) = contexts.entry(*tool) {
             let context = InnerContext::new(self.units, tool, self.z_safe, self.z_tool_change);
             entry.insert(context);
 
-            let mut tool_ordering = self.tool_ordering.lock().unwrap();
+            let mut tool_ordering = self.tool_ordering.borrow_mut();
             tool_ordering.auto_ordering(tool);
         }
     }
@@ -434,7 +434,7 @@ impl Program {
         self.create_context_if_missing_for_tool(&tool);
         Context {
             tool,
-            program: Arc::new(Mutex::new(self)),
+            program: Rc::new(RefCell::new(self)),
         }
     }
 
@@ -479,8 +479,8 @@ impl Program {
         Action: Fn(&mut InnerContext) -> Result<()>,
     {
         self.create_context_if_missing_for_tool(tool);
-        let mut locked_contexts = self.contexts.lock().unwrap();
-        let context = locked_contexts.get_mut(tool).unwrap();
+        let mut contexts = self.contexts.borrow_mut();
+        let context = contexts.get_mut(tool).unwrap();
         action(context)
     }
 
@@ -499,8 +499,8 @@ impl Program {
             self.create_context_if_missing_for_tool(&tool);
         }
 
-        let program_contexts = program.contexts.lock().unwrap();
-        let mut contexts = self.contexts.lock().unwrap();
+        let program_contexts = program.contexts.borrow();
+        let mut contexts = self.contexts.borrow_mut();
 
         for tool in program.tools() {
             let program_context = program_contexts.get(&tool).unwrap();
@@ -514,7 +514,7 @@ impl Program {
     /// Returns an ordered vec with all tools used by a program.
     #[must_use]
     pub fn tools(&self) -> Vec<Tool> {
-        let tool_ordering = self.tool_ordering.lock().unwrap();
+        let tool_ordering = self.tool_ordering.borrow();
         tool_ordering.tools_ordered()
     }
 
@@ -522,7 +522,7 @@ impl Program {
     #[must_use]
     pub fn bounds(&self) -> Bounds {
         let mut bounds = Bounds::minmax();
-        let contexts = self.contexts.lock().unwrap();
+        let contexts = self.contexts.borrow();
         let tools = self.tools();
 
         for tool in tools {
@@ -566,7 +566,7 @@ impl Program {
 
     /// Converts a program to G-code instructions
     pub fn to_instructions(&self) -> Result<Vec<Instruction>> {
-        let contexts = self.contexts.lock().unwrap();
+        let contexts = self.contexts.borrow();
         let tools = self.tools();
 
         let mut raw_instructions = vec![Instruction::G17(G17 {})];
@@ -660,8 +660,8 @@ impl Default for Program {
             z_safe: 50.0,
             z_tool_change: 100.0,
             units: Units::default(),
-            contexts: Arc::new(Mutex::new(HashMap::new())),
-            tool_ordering: Arc::new(Mutex::new(ToolOrdering::default())),
+            contexts: Rc::new(RefCell::new(HashMap::new())),
+            tool_ordering: Rc::new(RefCell::new(ToolOrdering::default())),
         }
     }
 }
