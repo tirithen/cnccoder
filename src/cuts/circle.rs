@@ -23,7 +23,7 @@ pub struct Circle {
     /// Indicates how a path should be compensated by the radius of the tool.
     /// `ToolPathCompensation::Inner` is useful for cutting holes wider than the tool,
     /// `ToolPathCompensation::Outer` is useful for cutting out round pieces, and
-    /// `ToolPathCompensation::Outer` is useful when drilling.
+    /// `ToolPathCompensation::None` is useful when drilling.
     pub compensation: ToolPathCompensation,
 }
 
