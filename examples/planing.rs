@@ -14,7 +14,7 @@ fn main() -> Result<()> {
         10.0,                 // Cutter diameter
         Direction::Clockwise, // Spindle rotation direction
         20000.0,              // Spindle speed (rpm)
-        5000.0,               // Max feed rate/speed that the cutter will travel with (mm/min)
+        500.0,                // Max feed rate/speed that the cutter will travel with (mm/min)
     );
 
     // Get the tool context to extend the program
