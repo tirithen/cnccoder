@@ -30,8 +30,8 @@ impl Bounds {
     #[must_use]
     pub fn minmax() -> Self {
         Self {
-            min: Vector3::max(),
-            max: Vector3::min(),
+            min: Vector3::MAX,
+            max: Vector3::MIN,
         }
     }
 

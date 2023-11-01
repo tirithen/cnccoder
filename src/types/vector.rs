@@ -60,14 +60,33 @@ impl Vector2 {
     /// An all zero `Vector2` value
     pub const ZERO: Self = Self { x: 0.0, y: 0.0 };
 
+    /// Create a 2D point struct using `f64::MIN` for x, y and z coordinates.
+    pub const MIN: Self = Self {
+        x: f64::MIN,
+        y: f64::MIN,
+    };
+
+    /// Create a 2D point struct using `f64::MAX` for x, y and z coordinates.
+    pub const MAX: Self = Self {
+        x: f64::MAX,
+        y: f64::MAX,
+    };
+
     /// Create a 2D point struct from x and y coordinates.
     #[must_use]
     pub fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
 
+    /// Create a 2D point struct from a single value.
+    #[must_use]
+    pub fn splat(value: f64) -> Self {
+        Self { x: value, y: value }
+    }
+
     /// Create a 2D point struct using `f64::MIN` for x and y coordinates.
     #[must_use]
+    #[deprecated]
     pub fn min() -> Self {
         Self {
             x: f64::MIN,
@@ -77,6 +96,7 @@ impl Vector2 {
 
     /// Create a 2D point struct using `f64::MAX` for x and y coordinates.
     #[must_use]
+    #[deprecated]
     pub fn max() -> Self {
         Self {
             x: f64::MAX,
@@ -283,14 +303,39 @@ impl Vector3 {
         z: 0.0,
     };
 
+    /// Create a 3D point struct using `f64::MIN` for x, y and z coordinates.
+    pub const MIN: Self = Self {
+        x: f64::MIN,
+        y: f64::MIN,
+        z: f64::MIN,
+    };
+
+    /// Create a 3D point struct using `f64::MAX` for x, y and z coordinates.
+    pub const MAX: Self = Self {
+        x: f64::MAX,
+        y: f64::MAX,
+        z: f64::MAX,
+    };
+
     /// Create a 3D point struct from x, y and z coordinates.
     #[must_use]
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
 
+    /// Create a 3D point struct from a single value.
+    #[must_use]
+    pub fn splat(value: f64) -> Self {
+        Self {
+            x: value,
+            y: value,
+            z: value,
+        }
+    }
+
     /// Create a 3D point struct using `f64::MIN` for x, y and z coordinates.
     #[must_use]
+    #[deprecated]
     pub fn min() -> Self {
         Self {
             x: f64::MIN,
@@ -301,6 +346,7 @@ impl Vector3 {
 
     /// Create a 3D point struct using `f64::MAX` for x, y and z coordinates.
     #[must_use]
+    #[deprecated]
     pub fn max() -> Self {
         Self {
             x: f64::MAX,
@@ -531,7 +577,7 @@ mod tests {
 
     #[test]
     fn test_vector3_min() {
-        let vector = Vector3::min();
+        let vector = Vector3::MIN;
         assert!(vector.x == f64::MIN);
         assert!(vector.y == f64::MIN);
         assert!(vector.z == f64::MIN);
@@ -539,7 +585,7 @@ mod tests {
 
     #[test]
     fn test_vector3_max() {
-        let vector = Vector3::max();
+        let vector = Vector3::MAX;
         assert!(vector.x == f64::MAX);
         assert!(vector.y == f64::MAX);
         assert!(vector.z == f64::MAX);
@@ -575,14 +621,14 @@ mod tests {
 
     #[test]
     fn test_vector2_min() {
-        let vector = Vector2::min();
+        let vector = Vector2::MIN;
         assert!(vector.x == f64::MIN);
         assert!(vector.y == f64::MIN);
     }
 
     #[test]
     fn test_vector2_max() {
-        let vector = Vector2::max();
+        let vector = Vector2::MAX;
         assert!(vector.x == f64::MAX);
         assert!(vector.y == f64::MAX);
     }
