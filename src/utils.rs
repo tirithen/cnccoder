@@ -6,10 +6,10 @@ pub fn scale(x: f64, in_min: f64, in_max: f64, out_min: f64, out_max: f64) -> f6
     (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 }
 
-/// Rounds an f64 value to 4 decimal digits, for example used to reduce clutter in G-code.
+/// Rounds an f64 value to 3 decimal digits, for example used to reduce clutter in G-code.
 #[must_use]
 pub fn round_precision(value: f64) -> f64 {
-    (value * 10000.0).round() / 10000.0
+    (value * 1000.0).round() / 1000.0
 }
 
 #[cfg(test)]
@@ -34,6 +34,6 @@ mod tests {
     #[test]
     fn test_round_precision() {
         let rounded = round_precision(1.235567774);
-        assert!(rounded == 1.2356);
+        assert!(rounded == 1.236);
     }
 }
