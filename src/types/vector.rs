@@ -52,10 +52,14 @@ as_serde_tuple! {
     pub struct Vector2 {
         pub x: f64,
         pub y: f64,
+
     }
 }
 
 impl Vector2 {
+    /// An all zero `Vector2` value
+    pub const ZERO: Self = Self { x: 0.0, y: 0.0 };
+
     /// Create a 2D point struct from x and y coordinates.
     #[must_use]
     pub fn new(x: f64, y: f64) -> Self {
@@ -272,6 +276,13 @@ as_serde_tuple! {
 }
 
 impl Vector3 {
+    /// An all zero `Vector3` value
+    pub const ZERO: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
+
     /// Create a 3D point struct from x, y and z coordinates.
     #[must_use]
     pub fn new(x: f64, y: f64, z: f64) -> Self {
