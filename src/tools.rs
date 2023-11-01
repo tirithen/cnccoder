@@ -263,7 +263,7 @@ impl fmt::Display for Ballnose {
 
         write!(
             formatter,
-            "Ballnose tool diameter = {}{}, length = {}{}, direction = {}, spindle_speed = {} rpm, feed_rate = {}{}/min",
+            "type = Ballnose, diameter = {}{}, length = {}{}, direction = {}, spindle_speed = {} rpm, feed_rate = {}{}/min",
             round_precision(self.diameter),
             units,
             round_precision(self.length),
@@ -371,7 +371,7 @@ impl fmt::Display for Conical {
 
         write!(
             formatter,
-            "Conical tool angle = {}°, diameter = {}{}, length = {}{}, direction = {}, spindle_speed = {} rpm, feed_rate = {}{}/min",
+            "type = Conical, angle = {}°, diameter = {}{}, length = {}{}, direction = {}, spindle_speed = {} rpm, feed_rate = {}{}/min",
             round_precision(self.angle),
             round_precision(self.diameter),
             units,
@@ -478,7 +478,7 @@ impl fmt::Display for Cylindrical {
 
         write!(
             formatter,
-            "Cylindrical tool diameter = {}{}, length = {}{}, direction = {}, spindle_speed = {} rpm, feed_rate = {}{}/min",
+            "type = Cylindrical, diameter = {}{}, length = {}{}, direction = {}, spindle_speed = {} rpm, feed_rate = {}{}/min",
             round_precision(self.diameter),
             units,
             round_precision(self.length),
