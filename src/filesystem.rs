@@ -153,7 +153,7 @@ mod tests {
 
         assert_eq!(gcode, r#"G17
 
-;(Tool change: Cylindrical tool diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min)
+;(Tool change: type = Cylindrical, diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min)
 G21
 G0 Z50
 M5
