@@ -35,8 +35,8 @@
 //!         20.0, // Cutter length
 //!         10.0, // Cutter diameter
 //!         Direction::Clockwise, // Spindle rotation direction
-//!         20000.0, // Spindle speed (rpm)
-//!         5000.0, // Max feed rate/speed that the cutter will travel with (mm/min)
+//!         10000.0, // Spindle speed (rpm)
+//!         3000.0, // Max feed rate/speed that the cutter will travel with (mm/min)
 //!     );
 //!
 //!     // Get the tool context to extend the program
@@ -57,7 +57,7 @@
 //!     // Write the G-code (for CNC) `planing.gcode` and Camotics project file
 //!     // `planing.camotics` (for simulation) to disk using a resolution value
 //!     // of 0.5 for the Camotics simulation.
-//!     write_project("planing", &program, 0.5)?;
+//!     write_project(&program, 0.5)?;
 //!
 //!     Ok(())
 //! }

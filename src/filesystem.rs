@@ -154,7 +154,18 @@ mod tests {
         let gcode = read_to_string("test-temp.gcode")?;
         remove_file("test-temp.gcode")?;
 
-        assert_eq!(gcode, r#"G17
+        let pattern =
+            regex::Regex::new(r"\;\((Created\s+on|Created\s+by|Generator):\s*[^\)]+\)").unwrap();
+        let gcode = pattern.replace_all(&gcode, ";($1: MASKED)");
+
+        assert_eq!(gcode, r#"
+;(Name: test-temp)
+;(Created on: MASKED)
+;(Created by: MASKED)
+;(Generator: MASKED)
+;(Workarea: size_x = 95 mm, size_y = 132 mm, size_z = 3.1 mm, min_x = -28 mm, min_y = -30 mm, max_z = 3 mm, z_safe = 10 mm, z_tool_change = 50 mm)
+
+G17
 
 ;(Tool change: type = Cylindrical, diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min)
 G21
@@ -163,6 +174,7 @@ M5
 T1 M6
 S5000
 M3
+G4 P4
 
 ;(Cut path at: x = 0, y = 0)
 G0 Z10
@@ -200,7 +212,7 @@ G1 X23 Y12 Z-0.1
 G0 Z10
 G0 Z50
 
-M2"#.to_string());
+M2"#.to_string().trim());
 
         Ok(())
     }

@@ -39,9 +39,10 @@
 //!         5000.0,
 //!     );
 //!
-//!     let program = planing(tool, measurements);
+//!     let mut program = planing(tool, measurements);
+//!     program.set_name("Peng");
 //!
-//!     write_project("planing", &program, 0.5)?;
+//!     write_project(&program, 0.5)?;
 //!
 //!     Ok(())
 //! }

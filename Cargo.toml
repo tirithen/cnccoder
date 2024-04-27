@@ -31,6 +31,9 @@ moby-name-gen = "0.1.0"
 hostname = "0.4.0"
 username = "0.2.0"
 
+[dev-dependencies]
+regex = "1.10.4"
+
 [profile.release]
 opt-level = 's'
 lto = true

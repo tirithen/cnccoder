@@ -19,6 +19,8 @@
 //!         50.0,
 //!     );
 //!
+//!     program.set_name("cylinder plane");
+//!
 //!     let tool = Tool::cylindrical(
 //!         Units::Metric,
 //!         20.0,
@@ -39,7 +41,7 @@
 //!
 //!     println!("G-code: {}", program.to_gcode()?);
 //!
-//!     write_project("planing", &program, 0.5)?;
+//!     write_project(&program, 0.5)?;
 //!
 //!     Ok(())
 //! }
@@ -60,6 +62,20 @@ use crate::prelude::round_precision;
 use crate::tools::*;
 use crate::types::*;
 use crate::utils::scale;
+
+fn format_number(value: f64) -> String {
+    if value.is_finite() {
+        let new_value = round_precision(value);
+        if new_value.is_finite() {
+            new_value
+        } else {
+            0.0
+        }
+    } else {
+        0.0
+    }
+    .to_string()
+}
 
 /// A high level respresentation of a CNC program operation, Cut, Comment, Message, or Empty.
 #[derive(Debug, Clone)]
@@ -687,14 +703,14 @@ impl Program {
         raw_instructions.push(Instruction::Comment(Comment {
             text: format!(
                 "Workarea: size_x = {} {units}, size_y = {} {units}, size_z = {} {units}, min_x = {} {units}, min_y = {} {units}, max_z = {} {units}, z_safe = {} {units}, z_tool_change = {} {units}",
-               round_precision(size.x),
-               round_precision(size.y),
-               round_precision(size.z),
-               round_precision(bounds.min.x),
-               round_precision(bounds.min.y),
-               round_precision(bounds.max.z),
-               round_precision(z_safe),
-               round_precision(z_tool_change),
+               format_number(size.x),
+               format_number(size.y),
+               format_number(size.z),
+               format_number(bounds.min.x),
+               format_number(bounds.min.y),
+               format_number(bounds.max.z),
+               format_number(z_safe),
+               format_number(z_tool_change),
             )
         }));
 
@@ -806,6 +822,14 @@ impl Default for Program {
 mod tests {
     use super::*;
 
+    fn mask_non_pure_comments(gcode: &str) -> String {
+        let pattern =
+            regex::Regex::new(r"(Created\s+on|Created\s+by|Generator):\s*[^\)]+").unwrap();
+        let gcode = pattern.replace_all(gcode, "$1: MASKED");
+
+        gcode.to_string()
+    }
+
     #[test]
     fn test_program_new() {
         let program = Program::new(Units::Metric, 10.0, 50.0);
@@ -814,8 +838,9 @@ mod tests {
     }
 
     #[test]
-    fn test_program_empty() {
+    fn test_program_empty() -> Result<()> {
         let mut program = Program::new(Units::Metric, 10.0, 50.0);
+        program.set_name("empty");
 
         let tool = Tool::cylindrical(
             Units::Metric,
@@ -830,7 +855,22 @@ mod tests {
         context.append_cut(Cut::drill(Vector3::default(), -1.0));
 
         assert_eq!(program.tools().len(), 1);
-        assert_eq!(program.to_instructions().unwrap(), vec![
+
+        let mut instructions = program.to_instructions()?;
+
+        for i in instructions.iter_mut() {
+            if let Instruction::Comment(comment) = i {
+                comment.text = mask_non_pure_comments(&comment.text);
+            }
+        }
+
+        assert_eq!(instructions, vec![
+            Instruction::Comment(Comment { text: "Name: empty".into() }),
+            Instruction::Comment(Comment { text: "Created on: MASKED".into()  }),
+            Instruction::Comment(Comment { text: "Created by: MASKED".into()  }),
+            Instruction::Comment(Comment { text: "Generator: MASKED" .into() }),
+            Instruction::Comment(Comment { text: "Workarea: size_x = 0 mm, size_y = 0 mm, size_z = 1 mm, min_x = 0 mm, min_y = 0 mm, max_z = 0 mm, z_safe = 10 mm, z_tool_change = 50 mm".into() }),
+            Instruction::Empty(Empty {}),
             Instruction::G17(G17 {}),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Tool change: type = Cylindrical, diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min".to_string() }),
@@ -840,6 +880,7 @@ mod tests {
             Instruction::M6(M6 { t: 1 }),
             Instruction::S(S { x: 5_000.0 }),
             Instruction::M3(M3 {}),
+            Instruction::G4(G4 { p: Duration::from_secs(4) }),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Drill hole at: x = 0, y = 0".to_string() }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
@@ -851,14 +892,28 @@ mod tests {
             Instruction::M2(M2 {}),
         ]);
 
-        let other_program = Program::new_empty_from(&program);
+        let mut other_program = Program::new_empty_from(&program);
+        other_program.set_name("empty2");
 
         assert_eq!(other_program.z_safe, 10.0);
         assert_eq!(other_program.z_tool_change, 50.0);
         assert_eq!(other_program.tools().len(), 0);
-        assert_eq!(
-            other_program.to_instructions().unwrap(),
-            vec![
+
+        let mut instructions = other_program.to_instructions()?;
+
+        for i in instructions.iter_mut() {
+            if let Instruction::Comment(comment) = i {
+                comment.text = mask_non_pure_comments(&comment.text);
+            }
+        }
+
+        assert_eq!(instructions, vec![
+            Instruction::Comment(Comment { text: "Name: empty2".into() }),
+            Instruction::Comment(Comment { text: "Created on: MASKED".into()  }),
+            Instruction::Comment(Comment { text: "Created by: MASKED".into()  }),
+            Instruction::Comment(Comment { text: "Generator: MASKED" .into() }),
+            Instruction::Comment(Comment { text: "Workarea: size_x = 0 mm, size_y = 0 mm, size_z = 0 mm, min_x = 0 mm, min_y = 0 mm, max_z = 0 mm, z_safe = 10 mm, z_tool_change = 50 mm".into() }),
+            Instruction::Empty(Empty {}),
                 Instruction::G17(G17 {}),
                 Instruction::G0(G0 {
                     x: None,
@@ -869,6 +924,8 @@ mod tests {
                 Instruction::M2(M2 {}),
             ]
         );
+
+        Ok(())
     }
 
     #[test]
@@ -985,6 +1042,7 @@ mod tests {
     #[test]
     fn test_program_to_instructions() -> Result<()> {
         let mut program = Program::new(Units::Metric, 10.0, 50.0);
+        program.set_name("program to instructions");
 
         let tool1 = Tool::cylindrical(
             Units::Metric,
@@ -1023,9 +1081,15 @@ mod tests {
             1.0,
         ));
 
-        let instructions = program.to_instructions()?;
+        let mut instructions = program.to_instructions()?;
 
         let expected_output = vec![
+            Instruction::Comment(Comment { text: "Name: program to instructions".into() }),
+            Instruction::Comment(Comment { text: "Created on: MASKED".into()  }),
+            Instruction::Comment(Comment { text: "Created by: MASKED".into()  }),
+            Instruction::Comment(Comment { text: "Generator: MASKED" .into() }),
+            Instruction::Comment(Comment { text: "Workarea: size_x = 20 mm, size_y = 20 mm, size_z = 3.1 mm, min_x = 0 mm, min_y = 0 mm, max_z = 3 mm, z_safe = 10 mm, z_tool_change = 50 mm".into() }),
+            Instruction::Empty(Empty {}),
             Instruction::G17(G17 {}),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Tool change: type = Cylindrical, diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min".to_string() }),
@@ -1035,6 +1099,7 @@ mod tests {
             Instruction::M6(M6 { t: 1 }),
             Instruction::S(S { x: 5_000.0 }),
             Instruction::M3(M3 {}),
+            Instruction::G4(G4 { p: Duration::from_secs(4) }),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 0, y = 0".to_string() }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
@@ -1057,6 +1122,7 @@ mod tests {
             Instruction::M6(M6 { t: 2 }),
             Instruction::S(S { x: 5_000.0 }),
             Instruction::M3(M3 {}),
+            Instruction::G4(G4 { p: Duration::from_secs(4) }),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 5, y = 10".to_string() }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
@@ -1075,14 +1141,26 @@ mod tests {
             Instruction::Empty(Empty {}),
             Instruction::M2(M2 {}),
         ];
+
+        for i in instructions.iter_mut() {
+            if let Instruction::Comment(comment) = i {
+                comment.text = mask_non_pure_comments(&comment.text);
+            }
+        }
 
         assert_eq!(instructions, expected_output);
 
         program.set_tool_ordering(&tool2, 1);
 
-        let instructions = program.to_instructions()?;
+        let mut instructions = program.to_instructions()?;
 
         let expected_output = vec![
+            Instruction::Comment(Comment { text: "Name: program to instructions".into() }),
+            Instruction::Comment(Comment { text: "Created on: MASKED".into()  }),
+            Instruction::Comment(Comment { text: "Created by: MASKED".into()  }),
+            Instruction::Comment(Comment { text: "Generator: MASKED" .into() }),
+            Instruction::Comment(Comment { text: "Workarea: size_x = 20 mm, size_y = 20 mm, size_z = 3.1 mm, min_x = 0 mm, min_y = 0 mm, max_z = 3 mm, z_safe = 10 mm, z_tool_change = 50 mm".into() }),
+            Instruction::Empty(Empty {}),
             Instruction::G17(G17 {}),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Tool change: type = Conical, angle = 45°, diameter = 1\", length = 1.207\", direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400\"/min".to_string() }),
@@ -1092,6 +1170,7 @@ mod tests {
             Instruction::M6(M6 { t: 1 }),
             Instruction::S(S { x: 5_000.0 }),
             Instruction::M3(M3 {}),
+            Instruction::G4(G4 { p: Duration::from_secs(4) }),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 5, y = 10".to_string() }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
@@ -1114,6 +1193,7 @@ mod tests {
             Instruction::M6(M6 { t: 2 }),
             Instruction::S(S { x: 5_000.0 }),
             Instruction::M3(M3 {}),
+            Instruction::G4(G4 { p: Duration::from_secs(4) }),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 0, y = 0".to_string() }),
             Instruction::G0(G0 { x: None, y: None, z: Some(10.0) }),
@@ -1132,6 +1212,12 @@ mod tests {
             Instruction::Empty(Empty {}),
             Instruction::M2(M2 {}),
         ];
+
+        for i in instructions.iter_mut() {
+            if let Instruction::Comment(comment) = i {
+                comment.text = mask_non_pure_comments(&comment.text);
+            }
+        }
 
         assert_eq!(instructions, expected_output);
 
@@ -1159,6 +1245,7 @@ mod tests {
         );
 
         let mut program1 = Program::new(Units::Metric, 10.0, 40.0);
+        program1.set_name("program1");
 
         let mut program1_tool1_context = program1.context(tool1);
         program1_tool1_context.append_cut(Cut::path(
@@ -1191,9 +1278,15 @@ mod tests {
 
         program1.merge(&program2)?;
 
-        let instructions = program1.to_instructions()?;
+        let mut instructions = program1.to_instructions()?;
 
         let expected_output = vec![
+            Instruction::Comment(Comment { text: "Name: program1".into() }),
+            Instruction::Comment(Comment { text: "Created on: MASKED".into()  }),
+            Instruction::Comment(Comment { text: "Created by: MASKED".into()  }),
+            Instruction::Comment(Comment { text: "Generator: MASKED" .into() }),
+            Instruction::Comment(Comment { text: "Workarea: size_x = 20 mm, size_y = 20 mm, size_z = 3.1 mm, min_x = 0 mm, min_y = 0 mm, max_z = 3 mm, z_safe = 5 mm, z_tool_change = 40 mm".into() }),
+            Instruction::Empty(Empty {}),
             Instruction::G17(G17 {}),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Tool change: type = Cylindrical, diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min".to_string() }),
@@ -1203,6 +1296,7 @@ mod tests {
             Instruction::M6(M6 { t: 1 }),
             Instruction::S(S { x: 5_000.0 }),
             Instruction::M3(M3 {}),
+            Instruction::G4(G4 { p: Duration::from_secs(4) }),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 0, y = 0".to_string() }),
             Instruction::G0(G0 { x: None, y: None, z: Some(5.0) }),
@@ -1239,6 +1333,7 @@ mod tests {
             Instruction::M6(M6 { t: 2 }),
             Instruction::S(S { x: 5_000.0 }),
             Instruction::M3(M3 {}),
+            Instruction::G4(G4 { p: Duration::from_secs(4) }),
             Instruction::Empty(Empty {}),
             Instruction::Comment(Comment { text: "Cut path at: x = 5, y = 10".to_string() }),
             Instruction::G0(G0 { x: None, y: None, z: Some(5.0) }),
@@ -1258,6 +1353,12 @@ mod tests {
             Instruction::M2(M2 {}),
         ];
 
+        for i in instructions.iter_mut() {
+            if let Instruction::Comment(comment) = i {
+                comment.text = mask_non_pure_comments(&comment.text);
+            }
+        }
+
         assert_eq!(instructions, expected_output);
 
         Ok(())
@@ -1266,6 +1367,7 @@ mod tests {
     #[test]
     fn test_program_to_gcode() -> Result<()> {
         let mut program = Program::new(Units::Imperial, 10.0, 50.0);
+        program.set_name("a test program");
 
         let tool1 = Tool::cylindrical(
             Units::Metric,
@@ -1306,57 +1408,65 @@ mod tests {
 
         program.set_tool_ordering(&tool2, 0);
 
-        let gcode = program.to_gcode()?;
+        let gcode = mask_non_pure_comments(&program.to_gcode()?);
 
         let expected_output = vec![
-            "G17".to_string(),
-            "".to_string(),
-            ";(Tool change: type = Conical, angle = 45°, diameter = 1\", length = 1.207\", direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400\"/min)".to_string(),
-            "G20".to_string(),
-            "G0 Z50".to_string(),
-            "M5".to_string(),
-            "T1 M6".to_string(),
-            "S5000".to_string(),
-            "M3".to_string(),
-            "".to_string(),
-            ";(Cut path at: x = 5, y = 10)".to_string(),
-            "G0 Z10".to_string(),
-            "G0 X10 Y20".to_string(),
-            "G1 Z3 F400".to_string(),
-            "G1 X10 Y20 Z3".to_string(),
-            "G1 X20 Y20 Z2".to_string(),
-            "G1 X10 Y20 Z2".to_string(),
-            "G1 X20 Y20 Z1".to_string(),
-            "G1 X10 Y20 Z1".to_string(),
-            "G1 X20 Y20 Z0".to_string(),
-            "G1 X10 Y20 Z-0.1".to_string(),
-            "G1 X20 Y20 Z-0.1".to_string(),
-            "G0 Z10".to_string(),
-            "".to_string(),
-            ";(Tool change: type = Cylindrical, diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min)".to_string(),
-            "G20".to_string(),
-            "G0 Z50".to_string(),
-            "M5".to_string(),
-            "T2 M6".to_string(),
-            "S5000".to_string(),
-            "M3".to_string(),
-            "".to_string(),
-            ";(Cut path at: x = 0, y = 0)".to_string(),
-            "G0 Z10".to_string(),
-            "G0 X0 Y0".to_string(),
-            "G1 Z3 F400".to_string(),
-            "G1 X0 Y0 Z3".to_string(),
-            "G1 X5 Y10 Z2".to_string(),
-            "G1 X0 Y0 Z2".to_string(),
-            "G1 X5 Y10 Z1".to_string(),
-            "G1 X0 Y0 Z1".to_string(),
-            "G1 X5 Y10 Z0".to_string(),
-            "G1 X0 Y0 Z-0.1".to_string(),
-            "G1 X5 Y10 Z-0.1".to_string(),
-            "G0 Z10".to_string(),
-            "G0 Z50".to_string(),
-            "".to_string(),
-            "M2".to_string(),
+            ";(Name: a test program)",
+            ";(Created on: MASKED)",
+            ";(Created by: MASKED)",
+            ";(Generator: MASKED)",
+            ";(Workarea: size_x = 20 \", size_y = 20 \", size_z = 3.1 \", min_x = 0 \", min_y = 0 \", max_z = 3 \", z_safe = 10 \", z_tool_change = 50 \")",
+            "",
+            "G17",
+            "",
+            ";(Tool change: type = Conical, angle = 45°, diameter = 1\", length = 1.207\", direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400\"/min)",
+            "G20",
+            "G0 Z50",
+            "M5",
+            "T1 M6",
+            "S5000",
+            "M3",
+            "G4 P4",
+            "",
+            ";(Cut path at: x = 5, y = 10)",
+            "G0 Z10",
+            "G0 X10 Y20",
+            "G1 Z3 F400",
+            "G1 X10 Y20 Z3",
+            "G1 X20 Y20 Z2",
+            "G1 X10 Y20 Z2",
+            "G1 X20 Y20 Z1",
+            "G1 X10 Y20 Z1",
+            "G1 X20 Y20 Z0",
+            "G1 X10 Y20 Z-0.1",
+            "G1 X20 Y20 Z-0.1",
+            "G0 Z10",
+            "",
+            ";(Tool change: type = Cylindrical, diameter = 4 mm, length = 50 mm, direction = clockwise, spindle_speed = 5000 rpm, feed_rate = 400 mm/min)",
+            "G20",
+            "G0 Z50",
+            "M5",
+            "T2 M6",
+            "S5000",
+            "M3",
+            "G4 P4",
+            "",
+            ";(Cut path at: x = 0, y = 0)",
+            "G0 Z10",
+            "G0 X0 Y0",
+            "G1 Z3 F400",
+            "G1 X0 Y0 Z3",
+            "G1 X5 Y10 Z2",
+            "G1 X0 Y0 Z2",
+            "G1 X5 Y10 Z1",
+            "G1 X0 Y0 Z1",
+            "G1 X5 Y10 Z0",
+            "G1 X0 Y0 Z-0.1",
+            "G1 X5 Y10 Z-0.1",
+            "G0 Z10",
+            "G0 Z50",
+            "",
+            "M2",
         ].join("\n");
 
         assert_eq!(gcode, expected_output);
@@ -1367,6 +1477,7 @@ mod tests {
     #[test]
     fn test_program_bounds() -> Result<()> {
         let mut program = Program::new(Units::Metric, 10.0, 50.0);
+        program.set_name("program bounds");
 
         let tool = Tool::cylindrical(
             Units::Metric,
