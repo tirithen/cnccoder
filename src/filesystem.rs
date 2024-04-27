@@ -19,6 +19,7 @@ use crate::{camotics::*, program::*};
 ///         10.0,
 ///         50.0,
 ///     );
+///     program.set_name("planing");
 ///
 ///     let tool = Tool::cylindrical(
 ///         Units::Metric,
@@ -38,12 +39,13 @@ use crate::{camotics::*, program::*};
 ///         1.0,
 ///     ));
 ///
-///     write_project("planing", &program, 0.5)?;
+///     write_project(&program, 0.5)?;
 ///
 ///     Ok(())
 /// }
 /// ```
-pub fn write_project(name: &str, program: &Program, camotics_resolution: f64) -> Result<()> {
+pub fn write_project(program: &Program, camotics_resolution: f64) -> Result<()> {
+    let name = program.name();
     let camotics = Camotics::from_program(name, program, camotics_resolution);
     let gcode = program.to_gcode()?;
 
@@ -72,6 +74,7 @@ mod tests {
     #[test]
     fn test_camotics_from_program() -> Result<()> {
         let mut program = Program::new(Units::Metric, 10.0, 50.0);
+        program.set_name("test-temp");
 
         let tool = Tool::cylindrical(
             Units::Metric,
@@ -105,7 +108,7 @@ mod tests {
             1.0,
         ));
 
-        write_project("test-temp", &program, 0.5)?;
+        write_project(&program, 0.5)?;
 
         let camotics: Value = serde_json::from_str(&read_to_string("test-temp.camotics")?)?;
         remove_file("test-temp.camotics")?;

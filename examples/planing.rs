@@ -6,6 +6,7 @@ fn main() -> Result<()> {
     // Create a program with metric measurements where the tool can travel freely at 10 mm
     // height, and move to 50 mm height for manual tool change.
     let mut program = Program::new(Units::Metric, 10.0, 50.0);
+    program.set_name("planing");
 
     // Create a cylindrical tool
     let tool = Tool::cylindrical(
@@ -35,7 +36,7 @@ fn main() -> Result<()> {
     // Write the G-code (for CNC) `planing.gcode` and Camotics project file
     // `planing.camotics` (for simulation) to disk using a resolution value
     // of 0.5 for the Camotics simulation.
-    write_project("planing", &program, 0.5)?;
+    write_project(&program, 0.5)?;
 
     Ok(())
 }

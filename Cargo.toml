@@ -26,6 +26,10 @@ lazy_static = "1"
 embed-doc-image = "0.1"
 glam = { version = "0.24", optional = true }
 nalgebra = { version = "0.32", optional = true }
+time = { version = "0.3.36", features = ["local-offset", "parsing"] }
+moby-name-gen = "0.1.0"
+hostname = "0.4.0"
+username = "0.2.0"
 
 [profile.release]
 opt-level = 's'

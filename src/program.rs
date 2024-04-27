@@ -51,6 +51,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use anyhow::{anyhow, Result};
+use time::OffsetDateTime;
 
 use crate::cuts::*;
 use crate::instructions::*;
@@ -328,12 +329,72 @@ impl<'a> Context<'a> {
     }
 }
 
+#[derive(Debug, Clone)]
+struct ProgramMeta {
+    name: String,
+    description: Vec<String>,
+    created_on: OffsetDateTime,
+    created_by: String,
+    generator: String,
+}
+
+impl ProgramMeta {
+    fn to_instructions(&self) -> Vec<Instruction> {
+        let mut instructions = vec![];
+
+        instructions.push(Instruction::Comment(Comment {
+            text: format!("Name: {}", self.name),
+        }));
+
+        instructions.push(Instruction::Comment(Comment {
+            text: format!("Created on: {}", self.created_on),
+        }));
+
+        instructions.push(Instruction::Comment(Comment {
+            text: format!("Created by: {}", self.created_by),
+        }));
+
+        instructions.push(Instruction::Comment(Comment {
+            text: format!("Generator: {}", self.generator),
+        }));
+
+        for description in &self.description {
+            instructions.push(Instruction::Comment(Comment {
+                text: format!("Description: {}", description),
+            }));
+        }
+
+        instructions
+    }
+}
+
+impl Default for ProgramMeta {
+    fn default() -> Self {
+        let username = username::get_user_name().unwrap_or("unknown".into());
+        let hostname = hostname::get()
+            .unwrap_or("unknown".into())
+            .to_string_lossy()
+            .to_string();
+
+        let args: Vec<String> = std::env::args().collect();
+
+        Self {
+            name: moby_name_gen::random_name(),
+            description: Vec::new(),
+            created_on: OffsetDateTime::now_local().unwrap_or(OffsetDateTime::now_utc()),
+            created_by: format!("{username}@{hostname}").to_string(),
+            generator: args.join(" "),
+        }
+    }
+}
+
 /// A program that stores information about all structs and tools used in a project. Several programs can
 /// also be merged into a single one.
 #[derive(Debug, Clone)]
 pub struct Program {
     z_safe: f64,
     z_tool_change: f64,
+    meta: ProgramMeta,
     units: Units,
     contexts: Rc<RefCell<HashMap<Tool, InnerContext>>>,
     tool_ordering: Rc<RefCell<ToolOrdering>>,
@@ -346,6 +407,7 @@ impl Program {
         Self {
             z_safe,
             z_tool_change,
+            meta: ProgramMeta::default(),
             units,
             contexts: Rc::new(RefCell::new(HashMap::new())),
             tool_ordering: Rc::new(RefCell::new(ToolOrdering::default())),
@@ -358,10 +420,33 @@ impl Program {
         Self {
             z_safe: program.z_safe,
             z_tool_change: program.z_tool_change,
+            meta: ProgramMeta::default(),
             units: program.units,
             contexts: Rc::new(RefCell::new(HashMap::new())),
             tool_ordering: Rc::new(RefCell::new(ToolOrdering::default())),
         }
+    }
+
+    /// Set the name of the program
+    pub fn set_name(&mut self, name: &str) {
+        self.meta.name = name.into();
+    }
+
+    /// Get the name of the program
+    #[must_use]
+    pub fn name(&self) -> &str {
+        self.meta.name.as_str()
+    }
+
+    /// Add to program description
+    pub fn add_description(&mut self, description: &str) {
+        self.meta.description.push(description.into());
+    }
+
+    /// Get program description
+    #[must_use]
+    pub fn description(&self) -> &[String] {
+        &self.meta.description
     }
 
     /// Returns the z safe value set for this context.
@@ -568,8 +653,48 @@ impl Program {
     pub fn to_instructions(&self) -> Result<Vec<Instruction>> {
         let contexts = self.contexts.borrow();
         let tools = self.tools();
+        let z_safe = self.z_safe();
+        let z_tool_change = self.z_tool_change();
+        let bounds = self.bounds();
+        let size = bounds.size();
+        let units = self.units;
 
-        let mut raw_instructions = vec![Instruction::G17(G17 {})];
+        if z_tool_change < z_safe {
+            return Err(anyhow!(
+                "z_tool_change {} {} must be larger than or equal to the z_safe value of {} {}",
+                z_tool_change,
+                units,
+                z_safe,
+                units
+            ));
+        }
+
+        if z_safe < bounds.max.z {
+            return Err(anyhow!(
+                "z_safe {} {} must be larger than or equal to the workpiece max z value of {} {}",
+                z_safe,
+                units,
+                bounds.max.z,
+                units
+            ));
+        }
+
+        let mut raw_instructions = self.meta.to_instructions();
+
+        raw_instructions.push(Instruction::Comment(Comment {
+            text: format!(
+                "Workarea: size_x = {} {units}, size_y = {} {units}, size_z = {} {units}, min_x = {} {units}, min_y = {} {units}, max_z = {} {units}, z_safe = {z_safe} {units}, z_tool_change = {z_tool_change} {units}",
+                size.x,
+                size.y,
+                size.z,
+                bounds.min.x,
+                bounds.min.y,
+                bounds.max.z
+            )
+        }));
+
+        raw_instructions.push(Instruction::Empty(Empty {}));
+        raw_instructions.push(Instruction::G17(G17 {}));
 
         for tool in tools {
             if let Some(context) = contexts.get(&tool) {
@@ -659,6 +784,7 @@ impl Default for Program {
         Self {
             z_safe: 50.0,
             z_tool_change: 100.0,
+            meta: ProgramMeta::default(),
             units: Units::default(),
             contexts: Rc::new(RefCell::new(HashMap::new())),
             tool_ordering: Rc::new(RefCell::new(ToolOrdering::default())),
