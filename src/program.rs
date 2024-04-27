@@ -49,6 +49,7 @@ use std::cell::RefCell;
 use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use time::OffsetDateTime;
@@ -57,6 +58,7 @@ use crate::cuts::*;
 use crate::instructions::*;
 use crate::tools::*;
 use crate::types::*;
+use crate::utils::scale;
 
 /// A high level respresentation of a CNC program operation, Cut, Comment, Message, or Empty.
 #[derive(Debug, Clone)]
@@ -726,6 +728,11 @@ impl Program {
                     } else {
                         Instruction::M4(M4 {})
                     },
+                    Instruction::G4(G4 {
+                        p: Duration::from_secs(
+                            scale(tool.spindle_speed(), 0.0, 50_000.0, 3.0, 20.0) as u64,
+                        ),
+                    }),
                 ]);
 
                 // Add tool instructions
