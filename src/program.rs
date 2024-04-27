@@ -56,6 +56,7 @@ use time::OffsetDateTime;
 
 use crate::cuts::*;
 use crate::instructions::*;
+use crate::prelude::round_precision;
 use crate::tools::*;
 use crate::types::*;
 use crate::utils::scale;
@@ -685,13 +686,15 @@ impl Program {
 
         raw_instructions.push(Instruction::Comment(Comment {
             text: format!(
-                "Workarea: size_x = {} {units}, size_y = {} {units}, size_z = {} {units}, min_x = {} {units}, min_y = {} {units}, max_z = {} {units}, z_safe = {z_safe} {units}, z_tool_change = {z_tool_change} {units}",
-                size.x,
-                size.y,
-                size.z,
-                bounds.min.x,
-                bounds.min.y,
-                bounds.max.z
+                "Workarea: size_x = {} {units}, size_y = {} {units}, size_z = {} {units}, min_x = {} {units}, min_y = {} {units}, max_z = {} {units}, z_safe = {} {units}, z_tool_change = {} {units}",
+               round_precision(size.x),
+               round_precision(size.y),
+               round_precision(size.z),
+               round_precision(bounds.min.x),
+               round_precision(bounds.min.y),
+               round_precision(bounds.max.z),
+               round_precision(z_safe),
+               round_precision(z_tool_change),
             )
         }));
 
