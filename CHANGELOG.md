@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.2.0](///compare/v0.1.1...v0.2.0) (2024-04-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* write_project no longer accepts the first name argument
+as the name will now instead be read from the program struct. The name
+can now be set by the Program::set_name method. Also setting z_safe and
+z_tool_change values that are smaller than the max z value from the cuts
+will now result in an error when the Program::to_instructions method
+runs.
+
+### Features
+
+* add Context::operations() to get operations 0d0d77c
+* add gcode meta data, imp. rel. tests e8ed51d
+* add meta data to gcode files, check z_safe 873d471
+* add MIN, MAX const, splat method on Vector2/3 de22f48
+* **vector:** Add Vector3::ZERO/Vector2::ZERO const 56ab125
+* wait for tool spin up after tool change 5d9002c
+
+
+### Bug Fixes
+
+* Context::merge() signature f061036
+
 ### [0.1.1](///compare/v0.1.0...v0.1.1) (2023-10-31)
 
 
